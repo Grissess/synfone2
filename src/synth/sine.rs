@@ -4,9 +4,9 @@ use super::*;
 const TAU: f32 = 2f32 * PI;
 
 pub struct Sine {
-    freq: GenBox,
-    phase: f32,
-    buf: SampleBuffer,
+    pub freq: GenBox,
+    pub phase: f32,
+    pub buf: SampleBuffer,
 }
 
 impl Generator for Sine {

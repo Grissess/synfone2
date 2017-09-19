@@ -1,9 +1,9 @@
 use super::*;
 
 pub struct Param {
-    name: String,
-    default: Sample,
-    buf: SampleBuffer,
+    pub name: String,
+    pub default: Sample,
+    pub buf: SampleBuffer,
 }
 
 impl Generator for Param {

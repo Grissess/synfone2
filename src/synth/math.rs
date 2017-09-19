@@ -1,8 +1,8 @@
 use super::*;
 
 pub struct Add {
-    terms: Vec<GenBox>,
-    buf: SampleBuffer,
+    pub terms: Vec<GenBox>,
+    pub buf: SampleBuffer,
 }
 
 impl Generator for Add {
@@ -21,8 +21,8 @@ impl Generator for Add {
 }
 
 pub struct Mul {
-    factors: Vec<GenBox>,
-    buf: SampleBuffer,
+    pub factors: Vec<GenBox>,
+    pub buf: SampleBuffer,
 }
 
 impl Generator for Mul {
