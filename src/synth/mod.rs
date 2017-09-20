@@ -60,6 +60,10 @@ impl SampleBuffer {
         self.samples.len()
     }
 
+    pub fn iter_mut<'a>(&'a mut self) -> slice::IterMut<'a, f32> {
+        self.samples.iter_mut()
+    }
+
     pub fn first(&self) -> Sample {
         *self.samples.first().unwrap()
     }
@@ -158,7 +162,11 @@ pub type GenBox = Box<Generator>;
 pub mod param;
 pub use self::param::Param;
 pub mod math;
-pub use self::math::{Add, Mul};
+pub use self::math::{Add, Mul, Negate, Reciprocate};
+pub mod rel;
+pub use self::rel::{Rel, RelOp};
+pub mod logic;
+pub use self::logic::IfElse;
 pub mod sine;
 pub use self::sine::Sine;
 pub mod saw;
@@ -167,5 +175,7 @@ pub mod triangle;
 pub use self::triangle::Triangle;
 pub mod square;
 pub use self::square::Square;
-//pub mod asdr;
-//pub use self::asdr::ASDR;
+pub mod noise;
+pub use self::noise::Noise;
+//pub mod adsr;
+//pub use self::adsr::ADSR;

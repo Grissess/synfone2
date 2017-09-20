@@ -1,6 +1,7 @@
 #![feature(associated_consts)]
 
 extern crate byteorder;
+extern crate rand;
 
 pub mod types;
 pub use types::*;

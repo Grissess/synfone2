@@ -48,6 +48,30 @@ impl<'a> From<&'a [u8; 36]> for Command {
                 data.copy_from_slice(&packet[4..]);
                 Command::Ping{data: data}
             }
+            2 => Command::Quit,
+            3 => Command::Play{
+                sec: fields_u32[1],
+                usec: fields_u32[2],
+                freq: fields_u32[3],
+                amp: fields_f32[4],
+                voice: fields_u32[5],
+            },
+            4 => {
+                let mut tp: [u8; 4] = unsafe { mem::uninitialized() };
+                let mut ident: [u8; 24] = unsafe { mem::uninitialized() };
+                tp.copy_from_slice(&packet[8..12]);
+                ident.copy_from_slice(&packet[12..]);
+                Command::Caps{
+                    voices: fields_u32[1],
+                    tp: tp,
+                    ident: ident,
+                }
+            },
+            5 => {
+                let mut samples: [i16; 16] = unsafe { mem::uninitialized() };
+                ::byteorder::LittleEndian::read_i16_into(&packet[4..], &mut samples);
+                Command::PCM{samples: samples}
+            },
             _ => {
                 let mut data: [u8; 36] = unsafe { mem::uninitialized() };
                 data.copy_from_slice(packet);

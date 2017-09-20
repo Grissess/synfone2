@@ -1,6 +1,8 @@
 use std::io;
 use std::io::*;
 
+extern crate rand;
+use rand::{Rng, SeedableRng};
 extern crate synfone;
 use synfone::synth::*;
 
@@ -9,8 +11,14 @@ const FRAMES: usize = 44100 * 2;
 fn main() {
     let mut params = Parameters::default();
     
-    let mut freq: GenBox = Box::new(Param { name: "freq".to_string(), default: 440.0, buf: SampleBuffer::new(1) });
-    let mut sg: GenBox = Box::new(Saw { freq: freq, phase: 0.0, buf: SampleBuffer::new(params.env.default_buffer_size) });
+    //let mut freq: GenBox = Box::new(Param { name: "freq".to_string(), default: 440.0, buf: SampleBuffer::new(1) });
+    //let mut sg: GenBox = Box::new(Saw { freq: freq, phase: 0.0, buf: SampleBuffer::new(params.env.default_buffer_size) });
+    let mut osrng = rand::os::OsRng::new().expect("Couldn't initialize OS RNG");
+    let mut seed: [u32; 4] = Default::default();
+    for i in seed.iter_mut() {
+        *i = osrng.next_u32();
+    }
+    let mut sg: GenBox = Box::new(Noise { rng: rand::XorShiftRng::from_seed(seed), buf: SampleBuffer::new(params.env.default_buffer_size) });
 
     let mut freq2: GenBox = Box::new(Param { name: "freq2".to_string(), default: 660.0, buf: SampleBuffer::new(1) });
     let mut sg2: GenBox = Box::new(Sine { freq: freq2, phase: 0.0, buf: SampleBuffer::new(params.env.default_buffer_size) });
