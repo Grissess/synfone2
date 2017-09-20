@@ -1,14 +1,18 @@
 use std::{iter, cmp, slice, mem};
+use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 use std::collections::HashMap;
 use super::*;
 
-#[derive(PartialEq,Eq,Clone,Copy)]
+use ::byteorder::ByteOrder;
+
+#[derive(PartialEq,Eq,Clone,Copy,Debug)]
 pub enum Rate {
     Sample,
     Control,
 }
 
+#[derive(Debug)]
 pub struct SampleBuffer {
     pub samples: Vec<Sample>,
     pub rate: Rate,
@@ -82,7 +86,11 @@ impl SampleBuffer {
     pub fn sum_into(&mut self, other: &SampleBuffer) {
         match self.rate {
             Rate::Sample => {
-                for i in 0..cmp::min(self.len(), other.len()) {
+                let bound = match other.rate {
+                    Rate::Sample => cmp::min(self.len(), other.len()),
+                    Rate::Control => self.len(),
+                };
+                for i in 0..bound {
                     self.samples[i] += match other.rate {
                         Rate::Sample => other.samples[i],
                         Rate::Control => other.samples[0],
@@ -98,7 +106,11 @@ impl SampleBuffer {
     pub fn mul_into(&mut self, other: &SampleBuffer) {
         match self.rate {
             Rate::Sample => {
-                for i in 0..cmp::min(self.len(), other.len()) {
+                let bound = match other.rate {
+                    Rate::Sample => cmp::min(self.len(), other.len()),
+                    Rate::Control => self.len(),
+                };
+                for i in 0..bound {
                     self.samples[i] *= match other.rate {
                         Rate::Sample => other.samples[i],
                         Rate::Control => other.samples[0],
@@ -117,13 +129,13 @@ impl SampleBuffer {
         }
     }
 
-    pub fn bytes<'a>(&'a self) -> &'a [u8] {
-        unsafe {
-            slice::from_raw_parts(
-                self.samples.as_ptr() as *const u8,
-                self.samples.len() * mem::size_of::<Sample>(),
-            )
-        }
+    pub fn size(&self) -> usize {
+        mem::size_of::<Sample>() * self.samples.len()
+    }
+
+    pub fn bytes(&self, buf: &mut [u8]) {
+        // FIXME: Depends on f32 instead of Sample alias
+        ::byteorder::LittleEndian::write_f32_into(&self.samples, buf);
     }
 }
 
@@ -136,8 +148,9 @@ impl IndexMut<usize> for SampleBuffer {
     fn index_mut(&mut self, idx: usize) -> &mut Sample { &mut self.samples[idx] }
 }
 
-pub trait Generator {
+pub trait Generator : Debug {
     fn eval<'a>(&'a mut self, params: &Parameters) -> &'a SampleBuffer;
+    fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer;
 }
 
 pub type GenBox = Box<Generator>;
@@ -148,8 +161,11 @@ pub mod math;
 pub use self::math::{Add, Mul};
 pub mod sine;
 pub use self::sine::Sine;
-//pub mod saw;
-//pub use saw::Saw;
-//pub mod triangle;
-//pub use triangle::Triangle;
-
+pub mod saw;
+pub use self::saw::Saw;
+pub mod triangle;
+pub use self::triangle::Triangle;
+pub mod square;
+pub use self::square::Square;
+//pub mod asdr;
+//pub use self::asdr::ASDR;

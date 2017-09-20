@@ -1,5 +1,7 @@
 use super::*;
+use std::mem;
 
+#[derive(Debug)]
 pub struct Add {
     pub terms: Vec<GenBox>,
     pub buf: SampleBuffer,
@@ -18,8 +20,12 @@ impl Generator for Add {
         }
         &self.buf
     }
+    fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
+        mem::replace(&mut self.buf, buf)
+    }
 }
 
+#[derive(Debug)]
 pub struct Mul {
     pub factors: Vec<GenBox>,
     pub buf: SampleBuffer,
@@ -37,5 +43,8 @@ impl Generator for Mul {
             }
         }
         &self.buf
+    }
+    fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
+        mem::replace(&mut self.buf, buf)
     }
 }
