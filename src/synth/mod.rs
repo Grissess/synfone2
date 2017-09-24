@@ -80,9 +80,8 @@ impl SampleBuffer {
         self.rate = other.rate;
         match self.rate {
             Rate::Sample => {
-                for i in 0..cmp::min(self.len(), other.len()) {
-                    self.samples[i] = other.samples[i];
-                }
+                let len = cmp::min(self.len(), other.len());
+                self.samples[..len].clone_from_slice(&other.samples[..len]);
             },
             Rate::Control => {
                 self.samples[0] = other.samples[0];
@@ -93,16 +92,18 @@ impl SampleBuffer {
     pub fn sum_into(&mut self, other: &SampleBuffer) {
         match self.rate {
             Rate::Sample => {
-                let bound = match other.rate {
-                    Rate::Sample => cmp::min(self.len(), other.len()),
-                    Rate::Control => self.len(),
+                match other.rate {
+                    Rate::Sample => {
+                        for (elt, oelt) in self.samples.iter_mut().zip(other.samples.iter()) {
+                            *elt += *oelt;
+                        }
+                    }
+                    Rate::Control => {
+                        for elt in &mut self.samples {
+                            *elt += other.samples[0];
+                        }
+                    }
                 };
-                for i in 0..bound {
-                    self.samples[i] += match other.rate {
-                        Rate::Sample => other.samples[i],
-                        Rate::Control => other.samples[0],
-                    };
-                }
             },
             Rate::Control => {
                 self.samples[0] += other.samples[0];
@@ -113,16 +114,18 @@ impl SampleBuffer {
     pub fn mul_into(&mut self, other: &SampleBuffer) {
         match self.rate {
             Rate::Sample => {
-                let bound = match other.rate {
-                    Rate::Sample => cmp::min(self.len(), other.len()),
-                    Rate::Control => self.len(),
+                match other.rate {
+                    Rate::Sample => {
+                        for (elt, oelt) in self.samples.iter_mut().zip(other.samples.iter()) {
+                            *elt *= *oelt;
+                        }
+                    }
+                    Rate::Control => {
+                        for elt in &mut self.samples {
+                            *elt *= other.samples[0];
+                        }
+                    }
                 };
-                for i in 0..bound {
-                    self.samples[i] *= match other.rate {
-                        Rate::Sample => other.samples[i],
-                        Rate::Control => other.samples[0],
-                    };
-                }
             },
             Rate::Control => {
                 self.samples[0] *= other.samples[0];
