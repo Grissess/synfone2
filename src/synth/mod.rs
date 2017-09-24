@@ -1,3 +1,5 @@
+#![allow(non_upper_case_globals)]
+
 use std::{iter, cmp, slice, mem, fmt};
 use std::fmt::Debug;
 use std::error::Error;

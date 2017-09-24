@@ -2,7 +2,6 @@ use std::mem;
 use super::*;
 
 use ::rand::{XorShiftRng, Rng, SeedableRng};
-use ::rand::os::OsRng;
 
 #[derive(Debug)]
 pub struct Noise {
@@ -11,7 +10,7 @@ pub struct Noise {
 }
 
 impl Generator for Noise {
-    fn eval<'a>(&'a mut self, params: &Parameters) -> &'a SampleBuffer {
+    fn eval<'a>(&'a mut self, _params: &Parameters) -> &'a SampleBuffer {
         self.buf.rate = Rate::Sample;
 
         for i in 0..self.buf.len() {
@@ -26,23 +25,17 @@ impl Generator for Noise {
     }
 }
 
-static mut _rand_gen: Option<OsRng> = None;
-
 pub struct NoiseFactory;
 
 impl GeneratorFactory for NoiseFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        if unsafe { &_rand_gen }.is_none() {
-            unsafe {_rand_gen = Some(OsRng::new().expect("Couldn't initialize OS random")); }
-        }
-
-        let mut seed: [u32; 4] = Default::default();
+        let mut seed: [u32; 4] = ::rand::random();
         for i in seed.iter_mut() {
-            *i = unsafe { &mut _rand_gen }.as_mut().unwrap().next_u32();
+            *i = ::rand::random()
         }
 
         Ok(Box::new(Noise {
-            rng: XorShiftRng::from_seed(seed),
+            rng: XorShiftRng::from_seed(::rand::random()),
             buf: SampleBuffer::new(params.env.default_buffer_size),
         }))
     }

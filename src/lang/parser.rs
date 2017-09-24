@@ -169,7 +169,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
         };
 
         let tp = self.token.to_type();
-        self.expect(tp);
+        self.expect(tp)?;
         ret
     }
 }

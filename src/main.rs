@@ -1,7 +1,6 @@
 use std::io;
 use std::io::*;
 
-extern crate rand;
 extern crate synfone;
 use synfone::synth::*;
 use synfone::lang::*;
@@ -30,7 +29,7 @@ fn main() {
         outbuf.reserve_exact(buf.size() - curlen);
         unsafe { outbuf.set_len(buf.size()); }
         buf.bytes(&mut outbuf);
-        out.write_all(&outbuf);
+        out.write_all(&outbuf).expect("failed to write to stdout");
         counter += buf.len();
     }
 }

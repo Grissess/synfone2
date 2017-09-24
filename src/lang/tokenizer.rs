@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 use super::*;
+use unicode_xid::UnicodeXID;
 
 pub struct Lexemes {
     radix_point: char,
@@ -368,7 +369,7 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
         }
 
         /* Identifiers */
-        if cc.is_xid_start() {
+        if UnicodeXID::is_xid_start(cc) {
             let mut buffer = String::new();
             buffer.push(cc);
 
@@ -379,7 +380,7 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                 }
                 let ncc = nc.unwrap();
 
-                if ncc.is_xid_continue() {
+                if UnicodeXID::is_xid_continue(ncc) {
                     buffer.push(ncc);
                 } else {
                     self.push_back(ncc);
