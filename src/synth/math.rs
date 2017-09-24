@@ -108,7 +108,7 @@ pub struct NegateFactory;
 
 impl GeneratorFactory for NegateFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        let mut gen = params.remove_param("value", 0)?.as_gen()?;
+        let gen = params.remove_param("value", 0)?.as_gen()?;
         let len = gen.buffer().len();
         Ok(Box::new(Negate {
             value: gen,
@@ -150,7 +150,7 @@ pub struct ReciprocateFactory;
 
 impl GeneratorFactory for ReciprocateFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        let mut gen = params.remove_param("value", 0)?.as_gen()?;
+        let gen = params.remove_param("value", 0)?.as_gen()?;
         let len = gen.buffer().len();
         Ok(Box::new(Reciprocate {
             value: gen,

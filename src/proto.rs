@@ -19,14 +19,14 @@ pub enum Command {
 impl Command {
     const SIZE: usize = 36;
 
-    fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Option<Duration> {
         match *self {
             Command::Play{sec, usec, ..} => Some(Duration::new(sec as u64, usec * 1000)),
             _ => None,
         }
     }
 
-    fn pitch(&self) -> Option<Pitch> {
+    pub fn pitch(&self) -> Option<Pitch> {
         match *self {
             Command::Play{freq, ..} => Some(Pitch::Freq(freq as f32)),
             _ => None,
