@@ -63,7 +63,7 @@ impl SampleBuffer {
         self.samples.len()
     }
 
-    pub fn iter_mut<'a>(&'a mut self) -> slice::IterMut<'a, f32> {
+    pub fn iter_mut(&mut self) -> slice::IterMut<f32> {
         self.samples.iter_mut()
     }
 
@@ -160,7 +160,7 @@ impl IndexMut<usize> for SampleBuffer {
 
 pub trait Generator : Debug {
     fn eval<'a>(&'a mut self, params: &Parameters) -> &'a SampleBuffer;
-    fn buffer<'a>(&'a self) -> &'a SampleBuffer;
+    fn buffer(&self) -> &SampleBuffer;
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer;
 }
 
@@ -186,10 +186,10 @@ impl GenFactoryErrorType {
             desc: "".to_string(),
         };
 
-        ret.desc = match &ret.kind {
-            &GenFactoryError::MissingRequiredParam(ref name, pos) => format!("Needed a parameter named {} or at pos {}", name, pos),
-            &GenFactoryError::CannotConvert(from, to) => format!("Cannot convert {:?} to {:?}", from, to),
-            &GenFactoryError::BadType(ty) => format!("Bad parameter type {:?}", ty),
+        ret.desc = match ret.kind {
+            GenFactoryError::MissingRequiredParam(ref name, pos) => format!("Needed a parameter named {} or at pos {}", name, pos),
+            GenFactoryError::CannotConvert(from, to) => format!("Cannot convert {:?} to {:?}", from, to),
+            GenFactoryError::BadType(ty) => format!("Bad parameter type {:?}", ty),
         };
 
         ret
@@ -210,7 +210,7 @@ impl From<GenFactoryError> for GenFactoryErrorType {
 }
 
 impl Error for GenFactoryErrorType {
-    fn description<'a>(&'a self) -> &'a str {
+    fn description(&self) -> &str {
         &self.desc
     }
 }
@@ -279,7 +279,7 @@ impl ParamValue {
         }
     }
 
-    pub fn as_gen(self) -> Result<GenBox, GenFactoryError> {
+    pub fn into_gen(self) -> Result<GenBox, GenFactoryError> {
         match self {
             ParamValue::Integer(v) => Ok(Box::new(self::param::Param { name : "_".to_string(), default: v as f32, buf: SampleBuffer::new(1) })),
             ParamValue::Float(v) => Ok(Box::new(self::param::Param { name : "_".to_string(), default: v, buf: SampleBuffer::new(1) })),
