@@ -29,11 +29,6 @@ pub struct NoiseFactory;
 
 impl GeneratorFactory for NoiseFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        let mut seed: [u32; 4] = ::rand::random();
-        for i in seed.iter_mut() {
-            *i = ::rand::random()
-        }
-
         Ok(Box::new(Noise {
             rng: XorShiftRng::from_seed(::rand::random()),
             buf: SampleBuffer::new(params.env.default_buffer_size),
