@@ -24,10 +24,10 @@ impl ErrorType {
             desc: "".to_string(),
         };
 
-        ret.desc = match &ret.kind {
-            &ErrorKind::Unexpected(found, expected) => format!("Found {:?}, expected {:?}", found, expected),
-            &ErrorKind::ExpectedOp(c, found) => format!("Expected {:?}, found {:?}", c, found),
-            &ErrorKind::UnknownGen(ref s) => format!("Unknown generator name {}", s),
+        ret.desc = match ret.kind {
+            ErrorKind::Unexpected(found, expected) => format!("Found {:?}, expected {:?}", found, expected),
+            ErrorKind::ExpectedOp(c, found) => format!("Expected {:?}, found {:?}", c, found),
+            ErrorKind::UnknownGen(ref s) => format!("Unknown generator name {}", s),
         };
 
         ret
@@ -42,7 +42,7 @@ impl ErrorType {
 }
 
 impl Error for ErrorType {
-    fn description<'a>(&'a self) -> &'a str {
+    fn description(&self) -> &str {
         &self.desc
     }
 }
@@ -144,8 +144,8 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 if self.expect_op('=').is_ok() {
                     nm
                 } else {
-                    match &self.token {
-                        &Token::Oper(c) if c == '(' => {
+                    match self.token {
+                        Token::Oper(c) if c == '(' => {
                             self.push_back(Token::Ident(nm));
                             ctr += 1;
                             (ctr - 1).to_string()

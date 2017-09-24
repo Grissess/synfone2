@@ -4,6 +4,7 @@ use super::*;
 
 use ::byteorder::{ByteOrder, NetworkEndian};
 
+#[allow(dead_code)]
 const OBLIGATE_POLYPHONE: u32 = 0xffffffff;
 
 pub enum Command {

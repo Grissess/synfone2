@@ -79,20 +79,20 @@ impl ErrorType {
             desc: "".to_string(),
         };
 
-        ret.desc = match &ret.kind {
-            &ErrorKind::UnexpectedEOF(ref loc) => format!("Unexpected EOF {}", match loc {
-                &Location::InString => "in string constant",
-                &Location::InStringEscape => "in string escape",
+        ret.desc = match ret.kind {
+            ErrorKind::UnexpectedEOF(ref loc) => format!("Unexpected EOF {}", match *loc {
+                Location::InString => "in string constant",
+                Location::InStringEscape => "in string escape",
             }),
-            &ErrorKind::BadEscapeValue(ref kind, ref val, ref err) => format!("Bad {} escape {}: {:?}", match kind {
-                &EscapeKind::Hexadecimal => "hexadecimal",
-                &EscapeKind::Octal => "octal",
+            ErrorKind::BadEscapeValue(ref kind, ref val, ref err) => format!("Bad {} escape {}: {:?}", match *kind {
+                EscapeKind::Hexadecimal => "hexadecimal",
+                EscapeKind::Octal => "octal",
             }, val, err),
-            &ErrorKind::BadNumericLiteral(ref kind, ref val, ref err) => format!("Bad {} literal {}: {:?}", match kind {
-                &NumericKind::Integer => "integer",
-                &NumericKind::Float => "floating point",
+            ErrorKind::BadNumericLiteral(ref kind, ref val, ref err) => format!("Bad {} literal {}: {:?}", match *kind {
+                NumericKind::Integer => "integer",
+                NumericKind::Float => "floating point",
             }, val, err),
-            &ErrorKind::UnknownChar(c) => format!("Unknown character {}", c),
+            ErrorKind::UnknownChar(c) => format!("Unknown character {}", c),
         };
 
         ret
@@ -107,22 +107,17 @@ impl ErrorType {
 }
 
 impl Error for ErrorType {
-    fn description<'a>(&'a self) -> &'a str {
+    fn description(&self) -> &str {
         &self.desc
     }
 
     fn cause(&self) -> Option<&Error> {
-        match &self.kind {
-            &ErrorKind::UnexpectedEOF(_) => None,
-            &ErrorKind::BadEscapeValue(_, _, ref err) => match err {
-                &Some(ref err) => Some(&**err),
-                &None => None,
+        match self.kind {
+            ErrorKind::BadNumericLiteral(_, _, ref err) | ErrorKind::BadEscapeValue(_, _, ref err) => match *err {
+                Some(ref err) => Some(&**err),
+                None => None,
             },
-            &ErrorKind::BadNumericLiteral(_, _, ref err) => match err {
-                &Some(ref err) => Some(&**err),
-                &None => None,
-            },
-            &ErrorKind::UnknownChar(_) => None,
+            ErrorKind::UnexpectedEOF(_) | ErrorKind::UnknownChar(_) => None,
         }
     }
 }
@@ -392,7 +387,7 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
         }
 
         /* Everything else */
-        return Ok(Token::Oper(cc));
+        Ok(Token::Oper(cc))
     }
 }
 
@@ -401,8 +396,7 @@ impl<T: Iterator<Item=char>> Iterator for Tokenizer<T> {
 
     fn next(&mut self) -> Option<Token> {
         match self.next_token() {
-            Err(_) => None,
-            Ok(Token::EOF) => None,
+            Err(_) | Ok(Token::EOF) => None,
             Ok(t) => Some(t),
         }
     }

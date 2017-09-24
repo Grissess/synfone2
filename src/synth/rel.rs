@@ -105,7 +105,7 @@ impl Generator for Rel {
 
         &self.buf
     }
-    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -115,18 +115,18 @@ pub struct RelFactory;
 
 impl GeneratorFactory for RelFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        let op = match params.get_req_param("rel", 1)? {
+        let op = match *params.get_req_param("rel", 1)? {
             /* TODO
-            &ParamValue::Integer(v) => v.into(),
-            &ParamValue::Float(v) => (v as isize).into(),
+            ParamValue::Integer(v) => v.into(),
+            ParamValue::Float(v) => (v as isize).into(),
             */
-            &ParamValue::Integer(_) => return Err(GenFactoryError::BadType(ParamKind::Integer)),
-            &ParamValue::Float(_) => return Err(GenFactoryError::BadType(ParamKind::Float)),
-            &ParamValue::String(ref v) => (&*v as &str).into(),
-            &ParamValue::Generator(_) => return Err(GenFactoryError::BadType(ParamKind::Generator)),
+            ParamValue::Integer(_) => return Err(GenFactoryError::BadType(ParamKind::Integer)),
+            ParamValue::Float(_) => return Err(GenFactoryError::BadType(ParamKind::Float)),
+            ParamValue::String(ref v) => (&*v as &str).into(),
+            ParamValue::Generator(_) => return Err(GenFactoryError::BadType(ParamKind::Generator)),
         };
-        let left = params.remove_param("left", 0)?.as_gen()?;
-        let right = params.remove_param("right", 2)?.as_gen()?;
+        let left = params.remove_param("left", 0)?.into_gen()?;
+        let right = params.remove_param("right", 2)?.into_gen()?;
         let buf = SampleBuffer::new(cmp::max(left.buffer().len(), right.buffer().len()));
         Ok(Box::new(Rel {
             left: left,

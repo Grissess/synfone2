@@ -19,7 +19,7 @@ impl Generator for Noise {
 
         &self.buf
     }
-    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }

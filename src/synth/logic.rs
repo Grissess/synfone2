@@ -57,7 +57,7 @@ impl Generator for IfElse {
 
         &self.buf
     }
-    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -67,9 +67,9 @@ pub struct IfElseFactory;
 
 impl GeneratorFactory for IfElseFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        let cond = params.remove_param("cond", 0)?.as_gen()?;
-        let iftrue = params.remove_param("iftrue", 1)?.as_gen()?;
-        let iffalse = params.remove_param("iffalse", 2)?.as_gen()?;
+        let cond = params.remove_param("cond", 0)?.into_gen()?;
+        let iftrue = params.remove_param("iftrue", 1)?.into_gen()?;
+        let iffalse = params.remove_param("iffalse", 2)?.into_gen()?;
         let buf = SampleBuffer::new(cmp::max(cmp::max(cond.buffer().len(), iftrue.buffer().len()), iffalse.buffer().len()));
         Ok(Box::new(IfElse { cond: cond, iftrue: iftrue, iffalse: iffalse, buf: buf }))
     }
