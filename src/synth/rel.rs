@@ -11,6 +11,39 @@ pub enum RelOp {
     Less,
 }
 
+/* TODO
+impl<T: PartialEq<isize>> From<T> for RelOp {
+    fn from(i: T) -> RelOp {
+        match i {
+            0 => RelOp::Greater,
+            1 => RelOp::GreaterEqual,
+            _ => RelOp::Equal,
+            3 => RelOp::NotEqual,
+            4 => RelOp::LessEqual,
+            5 => RelOp::Less,
+        }
+    }
+}
+*/
+
+impl<'a> From<&'a str> for RelOp {
+    fn from(s: &'a str) -> RelOp {
+        if s == ">" {
+            RelOp::Greater
+        } else if s == ">=" {
+            RelOp::GreaterEqual
+        } else if s == "!=" {
+            RelOp::NotEqual
+        } else if s == "<=" {
+            RelOp::LessEqual
+        } else if s == "<" {
+            RelOp::Less
+        } else {
+            RelOp::Equal
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Rel {
     pub left: GenBox,
@@ -72,7 +105,36 @@ impl Generator for Rel {
 
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct RelFactory;
+
+impl GeneratorFactory for RelFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        let op = match params.get_req_param("rel", 1)? {
+            /* TODO
+            &ParamValue::Integer(v) => v.into(),
+            &ParamValue::Float(v) => (v as isize).into(),
+            */
+            &ParamValue::Integer(_) => return Err(GenFactoryError::BadType(ParamKind::Integer)),
+            &ParamValue::Float(_) => return Err(GenFactoryError::BadType(ParamKind::Float)),
+            &ParamValue::String(ref v) => (&*v as &str).into(),
+            &ParamValue::Generator(_) => return Err(GenFactoryError::BadType(ParamKind::Generator)),
+        };
+        let left = params.remove_param("left", 0)?.as_gen()?;
+        let right = params.remove_param("right", 2)?.as_gen()?;
+        let buf = SampleBuffer::new(cmp::max(left.buffer().len(), right.buffer().len()));
+        Ok(Box::new(Rel {
+            left: left,
+            right: right,
+            op: op,
+            buf: buf,
+        }))
+    }
+}
+
+pub static Factory: RelFactory = RelFactory;

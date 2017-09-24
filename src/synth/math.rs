@@ -20,10 +20,24 @@ impl Generator for Add {
         }
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct AddFactory;
+
+impl GeneratorFactory for AddFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        Ok(Box::new(Add {
+            terms: params.get_pos_params().into_iter().map(|x| x.as_gen()).collect::<Result<Vec<_>, _>>()?,
+            buf: SampleBuffer::new(params.env.default_buffer_size),
+        }))
+    }
+}
+
+pub static FactoryAdd: AddFactory = AddFactory;
 
 #[derive(Debug)]
 pub struct Mul {
@@ -44,10 +58,24 @@ impl Generator for Mul {
         }
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct MulFactory;
+
+impl GeneratorFactory for MulFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        Ok(Box::new(Mul {
+            factors: params.get_pos_params().into_iter().map(|x| x.as_gen()).collect::<Result<Vec<_>, _>>()?,
+            buf: SampleBuffer::new(params.env.default_buffer_size),
+        }))
+    }
+}
+
+pub static FactoryMul: MulFactory = MulFactory;
 
 #[derive(Debug)]
 pub struct Negate {
@@ -70,10 +98,26 @@ impl Generator for Negate {
         }
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct NegateFactory;
+
+impl GeneratorFactory for NegateFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        let mut gen = params.remove_param("value", 0)?.as_gen()?;
+        let len = gen.buffer().len();
+        Ok(Box::new(Negate {
+            value: gen,
+            buf: SampleBuffer::new(len),
+        }))
+    }
+}
+
+pub static FactoryNegate: NegateFactory = NegateFactory;
 
 #[derive(Debug)]
 pub struct Reciprocate {
@@ -96,7 +140,23 @@ impl Generator for Reciprocate {
         }
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct ReciprocateFactory;
+
+impl GeneratorFactory for ReciprocateFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        let mut gen = params.remove_param("value", 0)?.as_gen()?;
+        let len = gen.buffer().len();
+        Ok(Box::new(Reciprocate {
+            value: gen,
+            buf: SampleBuffer::new(len),
+        }))
+    }
+}
+
+pub static FactoryReciprocate: ReciprocateFactory = ReciprocateFactory;

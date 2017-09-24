@@ -1,5 +1,6 @@
 #![feature(associated_consts)]
 #![feature(unicode)]
+#![feature(drop_types_in_const)]
 
 extern crate byteorder;
 extern crate rand;

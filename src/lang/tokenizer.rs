@@ -173,13 +173,20 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
         }
     }
 
-    fn next_token(&mut self) -> Result<Token, ErrorType> {
+    pub fn next_token(&mut self) -> Result<Token, ErrorType> {
+        let res = self._next_token();
+        eprintln!("next_token: {:?}", res);
+        res
+    }
+
+    fn _next_token(&mut self) -> Result<Token, ErrorType> {
         let mut c = self.next_char();
         if c == None {
             return Ok(Token::EOF);
         }
         let mut cc = c.unwrap();
 
+        /* Whitespace */
         while cc.is_whitespace() {
             c = self.next_char();
             if c == None {
@@ -315,10 +322,16 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                     radix = 16;
                 } else if ncc == self.lexemes.esc_oct {
                     radix = 8;
+                } else if ncc == self.lexemes.radix_point {
+                    floating = true;
+                    buffer.push(cc);
+                    buffer.push(ncc);
                 } else {
                     buffer.push(cc);
                     buffer.push(ncc);
                 }
+            } else {
+                buffer.push(cc);
             }
 
             loop {

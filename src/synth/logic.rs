@@ -15,11 +15,11 @@ impl Generator for IfElse {
         let iftrue_buf = self.iftrue.eval(params);
         let iffalse_buf = self.iffalse.eval(params);
         
-        if (
+        if
             cond_buf.rate == Rate::Control &&
             iftrue_buf.rate == Rate::Control &&
             iffalse_buf.rate == Rate::Control
-        ) {
+        {
             self.buf.set(if cond_buf.first() >= 0.5 {
                 iftrue_buf.first()
             } else {
@@ -57,7 +57,22 @@ impl Generator for IfElse {
 
         &self.buf
     }
+    fn buffer<'a>(&'a self) -> &'a SampleBuffer { &self.buf }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
 }
+
+pub struct IfElseFactory;
+
+impl GeneratorFactory for IfElseFactory {
+    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        let cond = params.remove_param("cond", 0)?.as_gen()?;
+        let iftrue = params.remove_param("iftrue", 1)?.as_gen()?;
+        let iffalse = params.remove_param("iffalse", 2)?.as_gen()?;
+        let buf = SampleBuffer::new(cmp::max(cmp::max(cond.buffer().len(), iftrue.buffer().len()), iffalse.buffer().len()));
+        Ok(Box::new(IfElse { cond: cond, iftrue: iftrue, iffalse: iffalse, buf: buf }))
+    }
+}
+
+pub static Factory: IfElseFactory = IfElseFactory;
