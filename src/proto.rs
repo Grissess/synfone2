@@ -18,7 +18,7 @@ pub enum Command {
 }
 
 impl Command {
-    const SIZE: usize = 36;
+    pub const SIZE: usize = 36;
 
     pub fn duration(&self) -> Option<Duration> {
         match *self {
@@ -32,6 +32,40 @@ impl Command {
             Command::Play{freq, ..} => Some(Pitch::Freq(freq as f32)),
             _ => None,
         }
+    }
+
+    pub fn write_into(&self, ret: &mut [u8]) -> bool {
+        if ret.len() < Command::SIZE {
+            return false;
+        }
+
+        match *self {
+            Command::KeepAlive => NetworkEndian::write_u32(&mut ret[..4], 0),
+            Command::Ping{data} => {
+                NetworkEndian::write_u32(&mut ret[..4], 1);
+                (&mut ret[4..]).copy_from_slice(&data);
+            },
+            Command::Quit => NetworkEndian::write_u32(&mut ret[..4], 2),
+            Command::Play{sec, usec, freq, amp, voice} => {
+                NetworkEndian::write_u32_into(&[3u32, sec, usec, freq], &mut ret[..16]);
+                NetworkEndian::write_f32(&mut ret[16..20], amp);
+                NetworkEndian::write_u32(&mut ret[20..24], voice);
+            },
+            Command::Caps{voices, tp, ident} => {
+                NetworkEndian::write_u32_into(&[4u32, voices], &mut ret[..8]);
+                (&mut ret[8..12]).copy_from_slice(&tp);
+                (&mut ret[12..]).copy_from_slice(&ident);
+            },
+            Command::PCM{samples} => {
+                NetworkEndian::write_u32(&mut ret[..4], 5);
+                NetworkEndian::write_i16_into(&samples, &mut ret[4..]);
+            },
+            Command::Unknown{data} => {
+                ret.copy_from_slice(&data);
+            },
+        };
+
+        true
     }
 }
 
@@ -85,33 +119,7 @@ impl<'a> From<&'a [u8; Command::SIZE]> for Command {
 impl<'a> From<&'a Command> for [u8; Command::SIZE] {
     fn from(cmd: &'a Command) -> [u8; Command::SIZE] {
         let mut ret: [u8; Command::SIZE] = [0u8; Command::SIZE];
-
-        match *cmd {
-            Command::KeepAlive => NetworkEndian::write_u32(&mut ret[..4], 0),
-            Command::Ping{data} => {
-                NetworkEndian::write_u32(&mut ret[..4], 1);
-                (&mut ret[4..]).copy_from_slice(&data);
-            },
-            Command::Quit => NetworkEndian::write_u32(&mut ret[..4], 2),
-            Command::Play{sec, usec, freq, amp, voice} => {
-                NetworkEndian::write_u32_into(&[3u32, sec, usec, freq], &mut ret[..16]);
-                NetworkEndian::write_f32(&mut ret[16..20], amp);
-                NetworkEndian::write_u32(&mut ret[20..24], voice);
-            },
-            Command::Caps{voices, tp, ident} => {
-                NetworkEndian::write_u32_into(&[4u32, voices], &mut ret[..8]);
-                (&mut ret[8..12]).copy_from_slice(&tp);
-                (&mut ret[12..]).copy_from_slice(&ident);
-            },
-            Command::PCM{samples} => {
-                NetworkEndian::write_u32(&mut ret[..4], 5);
-                NetworkEndian::write_i16_into(&samples, &mut ret[4..]);
-            },
-            Command::Unknown{data} => {
-                ret.copy_from_slice(&data);
-            },
-        };
-
+        cmd.write_into(&mut ret);
         ret
     }
 }

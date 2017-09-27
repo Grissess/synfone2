@@ -21,6 +21,7 @@ pub struct SampleBuffer {
     pub rate: Rate,
 }
 
+#[derive(Debug,Clone)]
 pub struct Environment {
     pub sample_rate: f32,
     pub default_buffer_size: usize,
@@ -143,7 +144,7 @@ impl SampleBuffer {
         mem::size_of::<Sample>() * self.samples.len()
     }
 
-    pub fn bytes(&self, buf: &mut [u8]) {
+    pub fn write_bytes(&self, buf: &mut [u8]) {
         // FIXME: Depends on f32 instead of Sample alias
         ::byteorder::LittleEndian::write_f32_into(&self.samples, buf);
     }

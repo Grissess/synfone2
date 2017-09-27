@@ -10,6 +10,7 @@ pub use types::*;
 pub mod synth;
 pub mod proto;
 pub mod lang;
+pub mod client;
 
 #[cfg(test)]
 mod tests {
