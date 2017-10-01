@@ -1,4 +1,4 @@
-use std::mem;
+use std::{mem, fmt};
 use std::time::Duration;
 use super::*;
 
@@ -66,6 +66,21 @@ impl Command {
         };
 
         true
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Command::")?;
+        match *self {
+            Command::KeepAlive => write!(f, "KeepAlive"),
+            Command::Ping{data} => write!(f, "Ping {{ data: {:?} }}", &data),
+            Command::Quit => write!(f, "Quit"),
+            Command::Play{sec, usec, freq, amp, voice} => write!(f, "Play {{ sec: {:?}, usec: {:?}, freq: {:?}, amp: {:?}, voice: {:?} }}", sec, usec, freq, amp, voice),
+            Command::Caps{voices, tp, ident} => write!(f, "Caps {{ voices: {:?}, tp: {:?}, ident: {:?} }}", voices, &tp, &ident),
+            Command::PCM{samples} => write!(f, "PCM {{ samples: {:?} }}", &samples),
+            Command::Unknown{data} => write!(f, "Unknown {{ data: {:?} }}", &data as &[u8]),
+        }
     }
 }
 

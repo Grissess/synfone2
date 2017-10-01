@@ -64,6 +64,10 @@ impl SampleBuffer {
         self.samples.len()
     }
 
+    pub fn iter(&self) -> slice::Iter<f32> {
+        self.samples.iter()
+    }
+
     pub fn iter_mut(&mut self) -> slice::IterMut<f32> {
         self.samples.iter_mut()
     }
