@@ -3,8 +3,20 @@ name = "synfone"
 version = "0.1.0"
 authors = ["Graham Northup <grissess@nexusg.org>"]
 
+[features]
+default = ['graphics']
+
+# The following feature will always refer ultimately to whatever backend
+# graphics library is chosen--which is subject to change.
+graphics = ['glium']
+
 [dependencies]
 byteorder = "1.1.0"
 rand = "0.3"
 unicode-xid = "0.1.0"
 portaudio = "0.7.0"
+
+[dependencies.glium]
+version = "0.17.1"
+optional = true
+features = ["glutin"]

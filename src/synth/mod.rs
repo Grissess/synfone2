@@ -163,6 +163,15 @@ impl IndexMut<usize> for SampleBuffer {
     fn index_mut(&mut self, idx: usize) -> &mut Sample { &mut self.samples[idx] }
 }
 
+impl Clone for SampleBuffer {
+    fn clone(&self) -> SampleBuffer {
+        SampleBuffer {
+            samples: self.samples.clone(),
+            rate: self.rate,
+        }
+    }
+}
+
 pub trait Generator : Debug {
     fn eval<'a>(&'a mut self, params: &Parameters) -> &'a SampleBuffer;
     fn buffer(&self) -> &SampleBuffer;

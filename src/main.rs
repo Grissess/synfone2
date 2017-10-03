@@ -1,5 +1,6 @@
-use std::io;
+use std::{io, env};
 use std::io::*;
+use std::fs::*;
 use std::net::*;
 use std::sync::*;
 use std::collections::VecDeque;
@@ -13,17 +14,17 @@ use synfone::lang::*;
 use synfone::proto::*;
 use synfone::client::*;
 
-const GEN: &'static str = "mul(saw(param('v_freq', 500)), ifelse(rel(param('v_frame'), '<', param('v_deadline')), param('v_amp'), 0.0))";
-
 fn main() {
     let env = Environment::default();
 
-    let mut gens = Vec::new();
-    for _i in 0..25 {
-        let gen = Parser::new(Tokenizer::new(GEN.chars())).expect("Failed to get first token").parse().expect("Failed to compile generator");
-        gens.push(gen);
-    }
+    let mut genfile = File::open(env::args_os().nth(1).expect("Need first argument to be a file with a generator vector")).expect("Failed to open file");
+    let mut genstr = String::new();
+    genfile.read_to_string(&mut genstr);
+
+    let gens = Parser::new(Tokenizer::new(genstr.chars()), env.clone()).expect("Failed to get first token").parse_gen_vec().expect("Failed to compile generators");
     let sock = UdpSocket::bind("0.0.0.0:13676").expect("Failed to bind socket");
+
+    eprintln!("Parsed {} generator definitions", gens.len());
 
     let mut client = Arc::new(Mutex::new(Client::new(sock.try_clone().expect("Failed to clone socket"), gens, env.clone()).expect("Failed to create client")));
 

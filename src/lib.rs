@@ -11,6 +11,10 @@ pub mod synth;
 pub mod proto;
 pub mod lang;
 pub mod client;
+pub mod monitor;
+
+#[cfg(feature = "graphics")]
+pub mod graphics;
 
 #[cfg(test)]
 mod tests {

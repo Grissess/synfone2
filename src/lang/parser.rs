@@ -55,16 +55,18 @@ impl fmt::Display for ErrorType {
 
 pub struct Parser<T: Iterator<Item=char>> {
     tzr: Tokenizer<T>,
+    env: Environment,
     token: Token,
     pushback: Option<Token>,
     factories: HashMap<String, &'static GeneratorFactory>,
 }
 
 impl<T: Iterator<Item=char>> Parser<T> {
-    pub fn new(mut tzr: Tokenizer<T>) -> Result<Parser<T>, Box<Error>> {
+    pub fn new(mut tzr: Tokenizer<T>, env: Environment) -> Result<Parser<T>, Box<Error>> {
         let token = tzr.next_token()?;
         Ok(Parser {
             tzr: tzr,
+            env: env,
             token: token,
             pushback: None,
             factories: all_factories(),
@@ -105,15 +107,51 @@ impl<T: Iterator<Item=char>> Parser<T> {
         }
     }
 
-    pub fn parse(&mut self) -> Result<GenBox, Box<Error>> {
-        self.parse_gen()
+    pub fn parse_gen_vec(&mut self) -> Result<Vec<GenBox>, Box<Error>> {
+        let mut ret: Vec<GenBox> = Vec::new();
+        self.expect_op('[')?;
+
+
+        loop {
+            if self.expect_op(']').is_ok() {
+                break;
+            }
+
+            /* TODO: Can't yet clone a GenBox safely
+            let repeat = match self.token {
+                Token::Integer(v) => {
+                    self.expect_op('*')?;
+                    v
+                },
+                _ => 1,
+            };
+            */
+
+            ret.push(self.parse_gen()?);
+
+            if self.expect_op(',').is_err() {
+                self.expect_op(']')?;
+                break;
+            }
+        }
+
+        Ok(ret)
     }
 
     pub fn parse_gen(&mut self) -> Result<GenBox, Box<Error>> {
         let name = self.expect_ident()?;
+        let mut params = self.parse_factory_params()?;
+        let factory = match self.factories.get(&name) {
+            Some(fac) => fac,
+            None => return Err(ErrorType::new(ErrorKind::UnknownGen(name)).into()),
+        };
+        factory.new(&mut params).map_err(Into::into)
+    }
 
+    pub fn parse_factory_params(&mut self) -> Result<FactoryParameters, Box<Error>> {
         self.expect_op('(')?;
-        let mut params: FactoryParameters = Default::default();
+
+        let mut params: FactoryParameters = FactoryParameters { env: self.env.clone(), ..Default::default() };
         let mut ctr = 0;
         loop {
             if self.expect_op(')').is_ok() {
@@ -124,17 +162,12 @@ impl<T: Iterator<Item=char>> Parser<T> {
             ctr = new_ctr;
 
             if self.expect_op(',').is_err() {
-                eprintln!("No comma: {:?}", self.token);
                 self.expect_op(')')?;
                 break;
             }
         }
 
-        let factory = match self.factories.get(&name) {
-            Some(fac) => fac,
-            None => return Err(ErrorType::new(ErrorKind::UnknownGen(name)).into()),
-        };
-        factory.new(&mut params).map_err(Into::into)
+        Ok(params)
     }
 
     pub fn parse_param(&mut self, pos: usize) -> Result<(String, ParamValue, usize), Box<Error>> {

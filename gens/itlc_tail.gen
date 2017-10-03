@@ -1,0 +1,1 @@
+, ifelse(rel(param('v_frame'), '<', param('v_deadline')), param('v_amp'), 0.0))
