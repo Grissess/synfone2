@@ -95,6 +95,7 @@ impl Client {
                 dprintln!("Playing on voice {} freq {} amp {} from frame {} until frame {}", voice, freq, amp, self.frames, (self.frames as f32) + frames);
 
                 let mut vars = &mut self.voices[voice as usize].params.vars;
+                *vars.entry("v_start".to_string()).or_insert_with(Default::default) = (self.frames as f32);
                 *vars.entry("v_deadline".to_string()).or_insert_with(Default::default) = (self.frames as f32) + frames;
                 *vars.entry("v_freq".to_string()).or_insert_with(Default::default) = freq as f32;
                 *vars.entry("v_amp".to_string()).or_insert_with(Default::default) = amp;

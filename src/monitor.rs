@@ -34,3 +34,5 @@ pub type Data = HashMap<DatumKind, Datum>;
 pub trait Monitor {
     fn process(&mut self, data: &Data);
 }
+
+pub type MonBox = Box<Monitor>;

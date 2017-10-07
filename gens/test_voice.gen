@@ -1,0 +1,1 @@
+mul(sine(param('v_freq', 500)), ifelse(rel(param('v_frame'), '<', param('v_deadline')), mul(param('v_amp'), add(param('v_frame'), negate(param('v_start'))), reciprocate(add(param('v_deadline'), negate(param('v_start'))))), 0.0))

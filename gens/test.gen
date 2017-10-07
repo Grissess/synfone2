@@ -1,12 +1,12 @@
 [
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#,
-	#gens/basic_saw.gen#
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#,
+	#gens/test_voice.gen#
 ]

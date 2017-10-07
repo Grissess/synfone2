@@ -172,7 +172,7 @@ impl Clone for SampleBuffer {
     }
 }
 
-pub trait Generator : Debug {
+pub trait Generator : Debug + Send {
     fn eval<'a>(&'a mut self, params: &Parameters) -> &'a SampleBuffer;
     fn buffer(&self) -> &SampleBuffer;
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer;
