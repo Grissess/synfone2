@@ -1,0 +1,1 @@
+lutgen(sine(lut_freq), 128, v_freq) * ifelse(v_frame < v_deadline, v_amp, 0)

@@ -3,6 +3,10 @@ name = "synfone"
 version = "0.1.0"
 authors = ["Graham Northup <grissess@nexusg.org>"]
 
+[[bin]]
+name = "synfone"
+doc = false
+
 [features]
 default = ['graphics']
 

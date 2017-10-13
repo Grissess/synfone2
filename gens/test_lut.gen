@@ -1,0 +1,1 @@
+lutgen(sine(lut_freq), 256, 440)

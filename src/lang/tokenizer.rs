@@ -425,9 +425,12 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                     floating = true;
                     buffer.push(cc);
                     buffer.push(ncc);
-                } else {
+                } else if ncc.is_digit(10) {
                     buffer.push(cc);
                     buffer.push(ncc);
+                } else {
+                    self.push_back(ncc);
+                    return Ok(Token::Integer(0));
                 }
             } else {
                 buffer.push(cc);

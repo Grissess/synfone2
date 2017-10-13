@@ -11,6 +11,19 @@ pub enum RelOp {
     Less,
 }
 
+impl RelOp {
+    pub fn to_param_string(&self) -> &'static str {
+        match *self {
+            RelOp::Greater => ">",
+            RelOp::GreaterEqual => ">=",
+            RelOp::Equal => "==",
+            RelOp::NotEqual => "!=",
+            RelOp::LessEqual => "<=",
+            RelOp::Less => "<",
+        }
+    }
+}
+
 /* TODO
 impl<T: PartialEq<isize>> From<T> for RelOp {
     fn from(i: T) -> RelOp {

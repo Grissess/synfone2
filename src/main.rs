@@ -20,6 +20,8 @@ use synfone::lang::*;
 use synfone::proto::*;
 use synfone::client::*;
 
+const GFX: bool = false;
+
 fn main() {
     let env = Environment::default();
 
@@ -72,7 +74,7 @@ fn main() {
 
     eprintln!("Audio stream started.");
 
-    {
+    let net_thread = {
         let client = client.clone();
         let net_thread = thread::spawn(move || {
             let mut buffer: [u8; Command::SIZE] = [0u8; Command::SIZE];
@@ -91,13 +93,14 @@ fn main() {
                 }
             }
         });
-    }
+        net_thread
+    };
 
     eprintln!("Network thread started.");
 
     //net_thread.join().expect("Network thread panicked");
     
-    {
+    if GFX {
         let last_buffer = last_buffer.clone();
 
         let mut events_loop = glutin::EventsLoop::new();
@@ -348,6 +351,8 @@ fn main() {
 
             //display.swap_buffers().expect("Failed to swap buffers");
         }
+    } else {
+        net_thread.join().expect("Network thread panicked");
     }
 
     eprintln!("Exiting.");

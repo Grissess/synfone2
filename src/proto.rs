@@ -71,15 +71,15 @@ impl Command {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Command::")?;
+        f.write_str("Command::")?;
         match *self {
-            Command::KeepAlive => write!(f, "KeepAlive"),
-            Command::Ping{data} => write!(f, "Ping {{ data: {:?} }}", &data),
-            Command::Quit => write!(f, "Quit"),
-            Command::Play{sec, usec, freq, amp, voice} => write!(f, "Play {{ sec: {:?}, usec: {:?}, freq: {:?}, amp: {:?}, voice: {:?} }}", sec, usec, freq, amp, voice),
-            Command::Caps{voices, tp, ident} => write!(f, "Caps {{ voices: {:?}, tp: {:?}, ident: {:?} }}", voices, &tp, &ident),
-            Command::PCM{samples} => write!(f, "PCM {{ samples: {:?} }}", &samples),
-            Command::Unknown{data} => write!(f, "Unknown {{ data: {:?} }}", &data as &[u8]),
+            Command::KeepAlive => f.write_str("KeepAlive"),
+            Command::Ping{data} => f.debug_struct("Ping").field("data", &data).finish(),
+            Command::Quit => f.write_str("Quit"),
+            Command::Play{sec, usec, freq, amp, voice} => f.debug_struct("Play").field("sec", &sec).field("usec", &usec).field("freq", &freq).field("amp", &amp).field("voice", &voice).finish(),
+            Command::Caps{voices, tp, ident} => f.debug_struct("Caps").field("voices", &voices).field("tp", &tp).field("ident", &ident).finish(),
+            Command::PCM{samples} => f.debug_struct("PCM").field("samples", &samples).finish(),
+            Command::Unknown{data} => f.debug_struct("Unknown").field("data", &(&data as &[u8])).finish(),
         }
     }
 }

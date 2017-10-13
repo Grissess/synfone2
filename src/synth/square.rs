@@ -35,7 +35,7 @@ impl GeneratorFactory for SquareFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
         Ok(Box::new(Square {
             freq: params.remove_param("freq", 0)?.into_gen()?,
-            phase: params.get_param("phase", 1, &ParamValue::Float(0.0)).as_f32()?,
+            phase: params.get_param("phase", 1, &mut ParamValue::Float(0.0)).as_f32()?,
             buf: SampleBuffer::new(params.env.default_buffer_size),
         }))
     }

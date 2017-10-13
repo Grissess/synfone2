@@ -24,7 +24,7 @@ impl GeneratorFactory for ParamFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
         Ok(Box::new(Param {
             name: params.get_req_param("name", 0)?.as_string()?,
-            default: params.get_param("default", 1, &ParamValue::Float(0.0)).as_f32()?,
+            default: params.get_param("default", 1, &mut ParamValue::Float(0.0)).as_f32()?,
             buf: SampleBuffer::new(1),
         }))
     }

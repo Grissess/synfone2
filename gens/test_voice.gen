@@ -1,1 +1,1 @@
-mul(sine(param('v_freq', 500)), ifelse(rel(param('v_frame'), '<', param('v_deadline')), mul(param('v_amp'), add(param('v_frame'), negate(param('v_start'))), reciprocate(add(param('v_deadline'), negate(param('v_start'))))), 0.0))
+(lutgen(sine(lut_freq), 128, v_freq) * controlrate(dahdsr(v_frame < v_deadline, 0, 4 / samplerate(), 0, 1, 1, 8 / samplerate()))) * v_amp

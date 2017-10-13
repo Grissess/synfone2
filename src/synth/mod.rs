@@ -249,6 +249,7 @@ pub enum ParamKind {
     Generator,
 }
 
+#[derive(Debug)]
 pub enum ParamValue {
     Integer(isize),
     Float(f32),
@@ -266,21 +267,21 @@ impl ParamValue {
         }
     }
 
-    pub fn as_isize(&self) -> Result<isize, GenFactoryError> {
+    pub fn as_isize(&mut self) -> Result<isize, GenFactoryError> {
         match *self {
             ParamValue::Integer(v) => Ok(v),
             ParamValue::Float(v) => Ok(v as isize),
             ParamValue::String(ref v) => v.parse().map_err(|_| GenFactoryError::CannotConvert(ParamKind::String, ParamKind::Integer)),
-            ParamValue::Generator(_) => Err(GenFactoryError::CannotConvert(ParamKind::Generator, ParamKind::Integer)),
+            ParamValue::Generator(ref mut g) => Ok(g.eval(&Default::default()).first() as isize),
         }
     }
 
-    pub fn as_f32(&self) -> Result<f32, GenFactoryError> {
+    pub fn as_f32(&mut self) -> Result<f32, GenFactoryError> {
         match *self {
             ParamValue::Integer(v) => Ok(v as f32),
             ParamValue::Float(v) => Ok(v),
             ParamValue::String(ref v) => v.parse().map_err(|_| GenFactoryError::CannotConvert(ParamKind::String, ParamKind::Float)),
-            ParamValue::Generator(_) => Err(GenFactoryError::CannotConvert(ParamKind::Generator, ParamKind::Float)),
+            ParamValue::Generator(ref mut g) => Ok(g.eval(&Default::default()).first()),
         }
     }
 
@@ -309,25 +310,30 @@ impl<'a> From<&'a ParamValue> for ParamKind {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug,Default)]
 pub struct FactoryParameters {
     pub env: Environment,
     pub vars: HashMap<String, ParamValue>,
 }
 
 impl FactoryParameters {
-    pub fn get_param<'a, 'b : 'a>(&'a self, name: &str, position: usize, default: &'b ParamValue) -> &'a ParamValue {
-        (
-            self.vars.get(name).or_else(||
-                self.vars.get(&position.to_string()).or(Some(default))
-            )
-        ).unwrap()
+    pub fn get_param<'a, 'b : 'a>(&'a mut self, name: &str, position: usize, default: &'b mut ParamValue) -> &'a mut ParamValue {
+        let position = position.to_string();
+
+        match (self.vars.contains_key(name), self.vars.contains_key(&position)) {
+            (true, _) => self.vars.get_mut(name).unwrap(),
+            (false, true) => self.vars.get_mut(&position).unwrap(),
+            (false, false) => default,
+        }
     }
 
-    pub fn get_req_param(&self, name: &str, position: usize) -> Result<&ParamValue, GenFactoryError> {
-        match self.vars.get(name).or_else(|| self.vars.get(&position.to_string())) {
-            Some(v) => Ok(v),
-            None => Err(GenFactoryError::MissingRequiredParam(name.to_string(), position)),
+    pub fn get_req_param(&mut self, name: &str, position: usize) -> Result<&mut ParamValue, GenFactoryError> {
+        let pos = position.to_string();
+
+        match (self.vars.contains_key(name), self.vars.contains_key(&pos)) {
+            (true, _) => Ok(self.vars.get_mut(name).unwrap()),
+            (false, true) => Ok(self.vars.get_mut(&pos).unwrap()),
+            (false, false) => Err(GenFactoryError::MissingRequiredParam(name.to_string(), position)),
         }
     }
 
@@ -367,6 +373,10 @@ pub mod rel;
 pub use self::rel::{Rel, RelOp};
 pub mod logic;
 pub use self::logic::IfElse;
+pub mod util;
+pub use self::util::{ControlRate, SampleRate};
+pub mod lut;
+pub use self::lut::Lut;
 pub mod sine;
 pub use self::sine::Sine;
 pub mod saw;
@@ -377,8 +387,8 @@ pub mod square;
 pub use self::square::Square;
 pub mod noise;
 pub use self::noise::Noise;
-//pub mod adsr;
-//pub use self::adsr::ADSR;
+pub mod adsr;
+pub use self::adsr::DAHDSR;
 
 pub fn all_factories() -> HashMap<String, &'static GeneratorFactory> {
     let mut ret = HashMap::new();
@@ -390,11 +400,16 @@ pub fn all_factories() -> HashMap<String, &'static GeneratorFactory> {
     ret.insert("reciprocate".to_string(), &self::math::FactoryReciprocate as &GeneratorFactory);
     ret.insert("rel".to_string(), &self::rel::Factory as &GeneratorFactory);
     ret.insert("ifelse".to_string(), &self::logic::Factory as &GeneratorFactory);
+    ret.insert("controlrate".to_string(), &self::util::FactoryControlRate as &GeneratorFactory);
+    ret.insert("samplerate".to_string(), &self::util::FactorySampleRate as &GeneratorFactory);
+    ret.insert("lutdata".to_string(), &self::lut::FactoryLutData as &GeneratorFactory);
+    ret.insert("lutgen".to_string(), &self::lut::FactoryLutGen as &GeneratorFactory);
     ret.insert("sine".to_string(), &self::sine::Factory as &GeneratorFactory);
     ret.insert("saw".to_string(), &self::saw::Factory as &GeneratorFactory);
     ret.insert("triangle".to_string(), &self::triangle::Factory as &GeneratorFactory);
     ret.insert("square".to_string(), &self::square::Factory as &GeneratorFactory);
     ret.insert("noise".to_string(), &self::noise::Factory as &GeneratorFactory);
+    ret.insert("dahdsr".to_string(), &self::adsr::Factory as &GeneratorFactory);
 
     ret
 }
