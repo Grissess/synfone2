@@ -5,7 +5,11 @@ use std::borrow::Borrow;
 use xml::reader;
 use xml::reader::{EventReader, XmlEvent};
 use xml::attribute::OwnedAttribute;
-
+use std::hash::Hash;
+use std::cmp::Eq;
+use std::str::FromStr;
+use std::fmt::Display;
+use failure::Error;
 use super::*;
 
 struct AttrMapping(HashMap<String, String>);
@@ -21,12 +25,42 @@ impl AttrMapping {
         AttrMapping(output)
     }
 
-    pub fn get_str<'a, 'b, 'c: 'a, Q>(&'a self, key: &'b Q, default: &'c str) -> &'a str where String: Borrow<Q> {
-        self.0.get(key).or(default)
+    pub fn get_str<'a, 'b, 'c: 'a, Q: Hash+Eq+Display+?Sized>(&'a self, key: &'b Q, default: &'c str) -> &'a str where String: Borrow<Q> {
+        self.0.get(key).map(|x| &**x).unwrap_or(default)
+    }
+
+    pub fn req<V: FromStr, Q: Hash+Eq+Display+?Sized>(&self, key: &Q) -> Result<V, Error> where String: Borrow<Q>, V::Err: failure::Fail {
+        match self.0.get(key){ 
+            Some(x) => Ok(x.parse()?),
+            None => bail!("{} not found in attrs", key)
+        }
+    }
+
+    pub fn req_midi_pitch<Q: Hash+Eq+Display+?Sized>(&self, key: &Q) -> Result<Pitch, Error> where String: Borrow<Q> {
+        Ok(Pitch::MIDI(self.req::<f32, Q>(key)?))
     }
 }
 
-pub fn read<R: io::Read>(source: R) -> reader::Result<IV> {
+fn parse_note(ev: XmlEvent, into: &mut Vec<Note>) -> Result<bool, Error> {
+    match ev {
+        XmlEvent::StartElement{name, attributes, ..} => {
+            if name.local_name.as_ref() != "note" { bail!("malformed iv: non-note attr in note stream"); }
+            let attrs = AttrMapping::make(attributes);
+            into.push(Note {
+                time: attrs.req("time")?,
+                ampl: attrs.req("ampl")?,
+                dur: attrs.req("dur")?,
+                pitch: attrs.req_midi_pitch("pitch")?,
+                start_tick: None,
+                dur_ticks: None
+            });
+            Ok(false)
+        },
+        _ => Ok(true)
+    }
+}
+
+pub fn read<R: io::Read>(source: R) -> Result<IV, Error> {
     let mut output: IV = Default::default();
     let mut event_reader = EventReader::new(source);
 
@@ -41,24 +75,29 @@ pub fn read<R: io::Read>(source: R) -> reader::Result<IV> {
 
     let mut state = ReadState::Idle;
 
-    for ev in event_reader {
-        match ev? {
+    loop {
+        match event_reader.next()? {
             XmlEvent::StartElement{name, attributes, ..} => {
                 let attrmap = AttrMapping::make(attributes);
 
-                match (name.local_name.as_ref(), &state) {
-                    ("bpms", &ReadState::Idle) => { state = ReadState::InBPMs; },
-                    ("bpm", &ReadState::InBPMs) => {
-                        let entry = BPMEntry {
-                            abstick: 0,
-                            bpm: BPM(0.0),
-                            realtime: Some(Seconds(0.0)),
-                        };
+                match name.local_name.as_ref() {
+                    "bpms" => { }
+                    "streams" => {
+                        match attrmap.get_str("type", "") {
+                            "ns" => {
+                                let mut notes = Vec::new();
+
+                                loop {
+                                    if !parse_note(event_reader.next()?, &mut notes)? { break; }
+                                }
+
+                            },
+                            _ => unimplemented!()
+                        }
                     },
-                    ("streams", &ReadState::Idle) => { state = ReadState::InStreams; },
-                    _ => (),
+                    _ => unimplemented!()
                 }
-            },
+            }
             XmlEvent::EndElement{name} => match (name.local_name.as_ref(), &state) {
                 ("bpms", _) => { state = ReadState::Idle; },
                 ("streams", _) => { state = ReadState::Idle; },
@@ -67,6 +106,7 @@ pub fn read<R: io::Read>(source: R) -> reader::Result<IV> {
             _ => (),
         }
     }
+        
 
     Ok(output)
 }

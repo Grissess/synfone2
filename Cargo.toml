@@ -20,6 +20,7 @@ rand = "0.3"
 unicode-xid = "0.1.0"
 portaudio = "0.7.0"
 xml-rs = "0.8.0"
+failure = "0.1"
 
 [dependencies.glium]
 #version = "0.17.1"
