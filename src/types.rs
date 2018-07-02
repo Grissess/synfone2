@@ -1,5 +1,6 @@
 pub type Sample = f32;
 
+#[derive(Debug,Clone)]
 pub enum Pitch {
     Freq(f32),
     MIDI(f32),

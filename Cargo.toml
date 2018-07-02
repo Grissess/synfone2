@@ -19,6 +19,7 @@ byteorder = "1.1.0"
 rand = "0.3"
 unicode-xid = "0.1.0"
 portaudio = "0.7.0"
+xml-rs = "0.8.0"
 
 [dependencies.glium]
 #version = "0.17.1"

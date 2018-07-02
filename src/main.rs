@@ -1,4 +1,4 @@
-use std::{io, env, thread, iter, time, mem};
+use std::{io, env, thread, iter, time, mem, ffi};
 use std::io::*;
 use std::fs::*;
 use std::net::*;
@@ -20,12 +20,26 @@ use synfone::lang::*;
 use synfone::proto::*;
 use synfone::client::*;
 
+fn main() {
+    let cmd = env::args_os().nth(1).expect("Please pass a command as the first argument; use `help` as a command for more information.");
+    let cmds = cmd.into_string().expect("Couldn't parse command");
+
+    let new_args: Vec<ffi::OsString> = env::args_os().skip(1).collect();
+
+    match &*cmds {
+        "help" => eprintln!("TODO! Commands are help, client."),
+        "client" => main_client(new_args),
+        _ => eprintln!("Unknown command; `help` for help."),
+    }
+}
+
+
 const GFX: bool = false;
 
-fn main() {
+fn main_client(args: Vec<ffi::OsString>) {
     let env = Environment::default();
 
-    let mut genfile = File::open(env::args_os().nth(1).expect("Need first argument to be a file with a generator vector")).expect("Failed to open file");
+    let mut genfile = File::open(args.iter().nth(1).expect("Need first argument to be a file with a generator vector")).expect("Failed to open file");
     let mut genstr = String::new();
     genfile.read_to_string(&mut genstr);
 
