@@ -1,1 +1,1 @@
-(lutgen(sine(lut_freq), 128, v_freq) * controlrate(dahdsr(v_frame < v_deadline, 0, 4 / samplerate(), 0, 1, 1, 8 / samplerate()))) * v_amp
+(lutgen(saw(lut_freq), 128, v_freq) * dahdsr(v_frame < v_deadline, 0, 8 / samplerate(), 0, 0, 1, 4 / samplerate())) * v_amp

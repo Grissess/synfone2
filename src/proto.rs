@@ -14,6 +14,8 @@ pub enum Command {
     Play{sec: u32, usec: u32, freq: u32, amp: f32, voice: u32},
     Caps{voices: u32, tp: [u8; 4], ident: [u8; 24]},
     PCM{samples: [i16; 16]},
+    PCMSyn{buffered: u32},
+    ArtParam{voice: Option<u32>, index: u32, value: f32},
     Unknown{data: [u8; Command::SIZE]},
 }
 
@@ -60,6 +62,13 @@ impl Command {
                 NetworkEndian::write_u32(&mut ret[..4], 5);
                 NetworkEndian::write_i16_into(&samples, &mut ret[4..]);
             },
+            Command::PCMSyn{buffered} => {
+                NetworkEndian::write_u32_into(&[6u32, buffered], &mut ret[..8]);
+            },
+            Command::ArtParam{voice, index, value} => {
+                NetworkEndian::write_u32_into(&[7u32, voice.unwrap_or(OBLIGATE_POLYPHONE), index], &mut ret[..12]);
+                NetworkEndian::write_f32(&mut ret[12..16], value);
+            },
             Command::Unknown{data} => {
                 ret.copy_from_slice(&data);
             },
@@ -79,6 +88,8 @@ impl fmt::Debug for Command {
             Command::Play{sec, usec, freq, amp, voice} => f.debug_struct("Play").field("sec", &sec).field("usec", &usec).field("freq", &freq).field("amp", &amp).field("voice", &voice).finish(),
             Command::Caps{voices, tp, ident} => f.debug_struct("Caps").field("voices", &voices).field("tp", &tp).field("ident", &ident).finish(),
             Command::PCM{samples} => f.debug_struct("PCM").field("samples", &samples).finish(),
+            Command::PCMSyn{buffered} => f.debug_struct("PCMSyn").field("buffered", &buffered).finish(),
+            Command::ArtParam{voice, index, value} => f.debug_struct("ArtParam").field("voice", &voice).field("index", &index).field("value", &value).finish(),
             Command::Unknown{data} => f.debug_struct("Unknown").field("data", &(&data as &[u8])).finish(),
         }
     }
@@ -121,6 +132,12 @@ impl<'a> From<&'a [u8; Command::SIZE]> for Command {
                 let mut samples: [i16; 16] = unsafe { mem::uninitialized() };
                 ::byteorder::LittleEndian::read_i16_into(&packet[4..], &mut samples);
                 Command::PCM{samples: samples}
+            },
+            6 => Command::PCMSyn{buffered: fields_u32[1]},
+            7 => Command::ArtParam {
+                voice: if fields_u32[1] == OBLIGATE_POLYPHONE { None } else { Some(fields_u32[1]) },
+                index: fields_u32[2],
+                value: fields_f32[3],
             },
             _ => {
                 let mut data: [u8; Command::SIZE] = unsafe { mem::uninitialized() };
