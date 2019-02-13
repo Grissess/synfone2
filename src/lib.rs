@@ -1,5 +1,3 @@
-#![feature(unicode)]
-
 extern crate byteorder;
 extern crate rand;
 extern crate unicode_xid;
