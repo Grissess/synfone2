@@ -216,7 +216,7 @@ pub struct IV {
 }
 
 impl IV {
-    fn iter_streams(&self) -> impl Iterator<Item=&NoteStream> {
+    /* fn iter_streams(&self) -> impl Iterator<Item=&NoteStream> {
         self.groups.values().chain(iter::once(&self.default_group)).flat_map(|x| x.iter())
-    }
+    } */
 }
