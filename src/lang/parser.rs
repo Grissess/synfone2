@@ -4,6 +4,16 @@ use std::collections::HashMap;
 use super::*;
 use synth::*;
 
+/*
+macro_rules! dprintln {
+    ( $( $x:expr ),* ) => { eprintln!( $( $x ),* ) }
+}
+*/
+
+macro_rules! dprintln {
+    ( $( $x:expr ),* ) => { () }
+}
+
 #[derive(Debug)]
 pub enum ErrorKind {
     Unexpected(TokType, TokType),
@@ -110,7 +120,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     pub fn expect_op(&mut self, oper: char) -> Result<(), Box<Error>> {
-        eprintln!("expect_op: {:?} ({})", self.cur_token(), oper);
+        dprintln!("expect_op: {:?} ({})", self.cur_token(), oper);
         match *self.cur_token() {
             Token::Oper(c) if c == oper => { self.expect(TokType::Oper)?; Ok(()) },
             _ => Err(ErrorType::new(ErrorKind::ExpectedOp(oper, self.cur_token().to_type())).into()),
@@ -118,7 +128,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     pub fn peek_op(&self, oper: char) -> bool {
-        eprintln!("peek_op: {:?} ({})", self.cur_token(), oper);
+        dprintln!("peek_op: {:?} ({})", self.cur_token(), oper);
         match *self.cur_token() {
             Token::Oper(c) if c == oper => true,
             _ => false
@@ -277,10 +287,10 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 }
             },
             Token::Oper('(') => {
-                eprintln!("consuming paren in parse_gen");
+                dprintln!("consuming paren in parse_gen");
                 self.expect(TokType::Oper)?;
                 let ret = self.parse_gen_rel()?;
-                eprintln!("parenthesized generator is concluding");
+                dprintln!("parenthesized generator is concluding");
                 self.expect_op(')')?;
                 Ok(ret)
             },
@@ -289,7 +299,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     pub fn parse_factory_params(&mut self) -> Result<FactoryParameters, Box<Error>> {
-        eprintln!("consuming paren in factory_params");
+        dprintln!("consuming paren in factory_params");
         self.expect_op('(')?;
 
         let mut params: FactoryParameters = FactoryParameters { env: self.env.clone(), ..Default::default() };
@@ -302,9 +312,9 @@ impl<T: Iterator<Item=char>> Parser<T> {
             params.vars.insert(nm, vl);
             ctr = new_ctr;
 
-            eprintln!("before factory_params comma, tok is {:?}", self.cur_token());
-            if self.expect_op(',').map_err(|e| eprintln!("factory_params consume comma failed: {:?}", e)).is_err() {
-                eprintln!("factory_params is concluding");
+            dprintln!("before factory_params comma, tok is {:?}", self.cur_token());
+            if self.expect_op(',').map_err(|e| dprintln!("factory_params consume comma failed: {:?}", e)).is_err() {
+                dprintln!("factory_params is concluding");
                 self.expect_op(')')?;
                 break;
             }
@@ -331,7 +341,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             },
         };
 
-        eprintln!("about to consume param value, token is {:?}", self.cur_token());
+        dprintln!("about to consume param value, token is {:?}", self.cur_token());
 
         match self.cur_token().clone() {  // FIXME: Does this really need to be cloned?
             Token::String(ref v) => { self.expect(TokType::String)?; Ok((name, ParamValue::String(v.clone()), ctr)) },
