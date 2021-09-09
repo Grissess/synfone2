@@ -5,6 +5,7 @@ use std::net::*;
 use std::sync::*;
 use std::{env, ffi, iter, thread};
 
+use cpal::SampleRate;
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 
 use synfone::client::*;
@@ -28,10 +29,17 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
-    let host = cpal::default_host();
+    let host = if let Ok(host) = cpal::host_from_id(cpal::HostId::Jack) {
+        host
+    } else {
+        cpal::default_host()
+    };
     let device = host.default_output_device().expect("no default host audio device!");
-    let mut conf_range = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
-    let conf = conf_range.next().expect("audio device has no supported configs!").with_max_sample_rate().config();
+    let mut conf_ranges = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
+    let conf_range = conf_ranges.next().expect("audio device has no configurations!");
+    let desired_sample_rate = conf_range.max_sample_rate().0;
+    //let desired_sample_rate = u32::clamp(44100, conf_range.min_sample_rate().0, conf_range.max_sample_rate().0);
+    let conf = conf_range.with_sample_rate(SampleRate(desired_sample_rate)).config();
 
     println!("playing at sample rate {}", conf.sample_rate.0);
     let env = Environment {
@@ -133,6 +141,7 @@ fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
 
                 let cmd = Command::from(&buffer);
                 {
+                    let client = client.clone();
                     let mut cli = client.lock().unwrap();
                     if !cli.handle_command(cmd, sender) {
                         break;
