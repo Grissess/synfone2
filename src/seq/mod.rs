@@ -2,12 +2,12 @@ pub mod sequencer;
 pub use self::sequencer::*;
 pub mod file;
 
-use std::{cmp, iter, ops};
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
+use std::{cmp, ops};
 
-use super::*;
+use super::Pitch;
 
-#[derive(Debug,Clone,Copy,PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Seconds(pub f32);
 
 impl Eq for Seconds {}
@@ -26,27 +26,41 @@ impl Ord for Seconds {
 
 impl ops::Add for Seconds {
     type Output = Seconds;
-    fn add(self, rhs: Seconds) -> Seconds { Seconds(self.0 + rhs.0) }
+    fn add(self, rhs: Seconds) -> Seconds {
+        Seconds(self.0 + rhs.0)
+    }
 }
 
 impl ops::Sub for Seconds {
     type Output = Seconds;
-    fn sub(self, rhs: Seconds) -> Seconds { Seconds(self.0 - rhs.0) }
+    fn sub(self, rhs: Seconds) -> Seconds {
+        Seconds(self.0 - rhs.0)
+    }
 }
 
-impl<RHS> ops::Mul<RHS> for Seconds where f32: ops::Mul<RHS, Output=f32> {
+impl<RHS> ops::Mul<RHS> for Seconds
+where
+    f32: ops::Mul<RHS, Output = f32>,
+{
     type Output = Seconds;
-    fn mul(self, rhs: RHS) -> Seconds { Seconds(self.0.mul(rhs)) }
+    fn mul(self, rhs: RHS) -> Seconds {
+        Seconds(self.0.mul(rhs))
+    }
 }
 
-impl<RHS> ops::Div<RHS> for Seconds where f32: ops::Div<RHS, Output=f32> {
+impl<RHS> ops::Div<RHS> for Seconds
+where
+    f32: ops::Div<RHS, Output = f32>,
+{
     type Output = Seconds;
-    fn div(self, rhs: RHS) -> Seconds { Seconds(self.0.div(rhs)) }
+    fn div(self, rhs: RHS) -> Seconds {
+        Seconds(self.0.div(rhs))
+    }
 }
 
 pub type Ticks = u64;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum Time {
     Seconds(Seconds),
     Ticks(Ticks),
@@ -64,7 +78,7 @@ impl From<Ticks> for Time {
     }
 }
 
-#[derive(Debug,Clone,Copy,PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BPM(pub f32);
 
 impl Eq for BPM {}
@@ -81,16 +95,26 @@ impl Ord for BPM {
     }
 }
 
-impl<RHS> ops::Mul<RHS> for BPM where f32: ops::Mul<RHS, Output=f32> {
+impl<RHS> ops::Mul<RHS> for BPM
+where
+    f32: ops::Mul<RHS, Output = f32>,
+{
     type Output = BPM;
-    fn mul(self, rhs: RHS) -> BPM { BPM(self.0.mul(rhs)) }
+    fn mul(self, rhs: RHS) -> BPM {
+        BPM(self.0.mul(rhs))
+    }
 }
-impl<RHS> ops::Div<RHS> for BPM where f32: ops::Div<RHS, Output=f32> {
+impl<RHS> ops::Div<RHS> for BPM
+where
+    f32: ops::Div<RHS, Output = f32>,
+{
     type Output = BPM;
-    fn div(self, rhs: RHS) -> BPM { BPM(self.0.div(rhs)) }
+    fn div(self, rhs: RHS) -> BPM {
+        BPM(self.0.div(rhs))
+    }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Note {
     pub time: Seconds,
     pub dur: Seconds,
@@ -100,7 +124,7 @@ pub struct Note {
     pub pitch: Pitch,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Aux {
     pub time: Seconds,
     pub data: String,
@@ -109,7 +133,7 @@ pub struct Aux {
 pub type NoteStream = Vec<Note>;
 pub type AuxStream = Vec<Aux>;
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub enum Stream {
     Note(NoteStream),
     Aux(AuxStream),
@@ -126,14 +150,14 @@ impl Stream {
 
 pub type Group = Vec<NoteStream>;
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct BPMEntry {
     pub abstick: Ticks,
     pub bpm: BPM,
     pub realtime: Option<Seconds>,
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct BPMTableInput {
     pub entries: Vec<BPMEntry>,
     pub resolution: f32,
@@ -146,10 +170,17 @@ impl From<BPMTableInput> for BPMTable {
         for ent in range.iter_mut() {
             ent.realtime = Some(Seconds(0.0));
         }
-        for idx in 1 .. (range.len() - 1) {
+        for idx in 1..(range.len() - 1) {
             let tick = range[idx].abstick;
-            let BPMEntry {abstick: ptick, bpm: pbpm, realtime: ptm} = range[idx - 1];
-            range[idx].realtime = Some(ptm.unwrap() + Seconds((60.0 * ((tick - ptick) as f32)) / (pbpm * input.resolution).0));
+            let BPMEntry {
+                abstick: ptick,
+                bpm: pbpm,
+                realtime: ptm,
+            } = range[idx - 1];
+            range[idx].realtime = Some(
+                ptm.unwrap()
+                    + Seconds((60.0 * ((tick - ptick) as f32)) / (pbpm * input.resolution).0),
+            );
         }
         BPMTable {
             range: range,
@@ -171,9 +202,13 @@ impl BPMTable {
                 Ok(idx) => self.range[idx].realtime.unwrap(),
                 Err(idx) => {
                     let effidx = cmp::max(0, idx - 1);
-                    let BPMEntry {abstick: tick, bpm, realtime: sec} = self.range[effidx];
+                    let BPMEntry {
+                        abstick: tick,
+                        bpm,
+                        realtime: sec,
+                    } = self.range[effidx];
                     sec.unwrap() + Seconds((60.0 * ((t - tick) as f32)) / (bpm * self.resolution).0)
-                },
+                }
             },
         }
     }
@@ -185,13 +220,20 @@ impl BPMTable {
     pub fn to_ticks(&self, tm: Time) -> Ticks {
         match tm {
             Time::Ticks(t) => t,
-            Time::Seconds(s) => match self.range.binary_search_by_key(&s, |&ent| ent.realtime.unwrap()) {
+            Time::Seconds(s) => match self
+                .range
+                .binary_search_by_key(&s, |&ent| ent.realtime.unwrap())
+            {
                 Ok(idx) => self.range[idx].abstick,
                 Err(idx) => {
                     let effidx = cmp::max(0, idx - 1);
-                    let BPMEntry {abstick: tick, bpm, realtime: sec} = self.range[effidx];
+                    let BPMEntry {
+                        abstick: tick,
+                        bpm,
+                        realtime: sec,
+                    } = self.range[effidx];
                     tick + ((((s - sec.unwrap()).0 * bpm.0 * self.resolution) / 60.0) as Ticks)
-                },
+                }
             },
         }
     }

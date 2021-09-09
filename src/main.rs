@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use std::net::*;
 use std::sync::*;
-use std::{env, iter, thread, ffi};
+use std::{env, ffi, iter, thread};
 
 extern crate portaudio;
 use portaudio as pa;
@@ -27,11 +27,15 @@ fn main() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-
 fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
     let env = Environment::default();
 
-    let mut genfile = File::open(args.iter().nth(1).expect("Need first argument to be a file with a generator vector")).expect("Failed to open file");
+    let mut genfile = File::open(
+        args.iter()
+            .nth(1)
+            .expect("Need first argument to be a file with a generator vector"),
+    )
+    .expect("Failed to open file");
     let mut genstr = String::new();
     genfile.read_to_string(&mut genstr)?;
 
@@ -126,7 +130,7 @@ fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
     };
 
     eprintln!("Network thread started.");
-    
+
     net_thread.join().expect("Network thread panicked");
 
     eprintln!("Exiting.");

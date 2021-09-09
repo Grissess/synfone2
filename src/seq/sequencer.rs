@@ -1,6 +1,6 @@
-use super::{NoteStream, Note, IV};
+use super::{Note, NoteStream, IV};
 
-pub fn coalesce<'a, I: Iterator<Item=&'a NoteStream>>(stream_iter: I) -> NoteStream {
+pub fn coalesce<'a, I: Iterator<Item = &'a NoteStream>>(stream_iter: I) -> NoteStream {
     let mut output = NoteStream::new();
 
     for ns in stream_iter {
@@ -16,13 +16,15 @@ pub struct SchedParams {
 
 impl Default for SchedParams {
     fn default() -> SchedParams {
-        SchedParams {
-            epsilon: 0.0,
-        }
+        SchedParams { epsilon: 0.0 }
     }
 }
 
-pub fn schedule<'a, 'b: 'a, I: Iterator<Item=&'a Note>, F: FnMut(&'a Note) -> Option<&'b str>>(notes: I, mut classifier: F, params: &SchedParams) -> IV {
+pub fn schedule<'a, 'b: 'a, I: Iterator<Item = &'a Note>, F: FnMut(&'a Note) -> Option<&'b str>>(
+    notes: I,
+    mut classifier: F,
+    params: &SchedParams,
+) -> IV {
     let mut output: IV = Default::default();
 
     for note in notes {
@@ -41,7 +43,7 @@ pub fn schedule<'a, 'b: 'a, I: Iterator<Item=&'a Note>, F: FnMut(&'a Note) -> Op
             if ns.len() > 0 {
                 let nt = &ns[ns.len() - 1];
                 if note.time.0 < nt.time.0 + nt.dur.0 + params.epsilon {
-                    continue
+                    continue;
                 }
             }
             found = Some(idx);
