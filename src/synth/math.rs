@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, Parameters, Rate,
+    SampleBuffer,
+};
 use std::mem;
 
 #[derive(Debug)]
@@ -20,7 +23,9 @@ impl Generator for Add {
         }
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -31,7 +36,11 @@ pub struct AddFactory;
 impl GeneratorFactory for AddFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
         Ok(Box::new(Add {
-            terms: params.get_pos_params().into_iter().map(|x| x.into_gen()).collect::<Result<Vec<_>, _>>()?,
+            terms: params
+                .get_pos_params()
+                .into_iter()
+                .map(|x| x.into_gen())
+                .collect::<Result<Vec<_>, _>>()?,
             buf: SampleBuffer::new(params.env.default_buffer_size),
         }))
     }
@@ -58,7 +67,9 @@ impl Generator for Mul {
         }
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -69,7 +80,11 @@ pub struct MulFactory;
 impl GeneratorFactory for MulFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
         Ok(Box::new(Mul {
-            factors: params.get_pos_params().into_iter().map(|x| x.into_gen()).collect::<Result<Vec<_>, _>>()?,
+            factors: params
+                .get_pos_params()
+                .into_iter()
+                .map(|x| x.into_gen())
+                .collect::<Result<Vec<_>, _>>()?,
             buf: SampleBuffer::new(params.env.default_buffer_size),
         }))
     }
@@ -91,14 +106,16 @@ impl Generator for Negate {
                 for v in self.buf.iter_mut() {
                     *v *= -1.0;
                 }
-            },
+            }
             Rate::Control => {
                 self.buf[0] *= -1.0;
-            },
+            }
         }
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -133,14 +150,16 @@ impl Generator for Reciprocate {
                 for v in self.buf.iter_mut() {
                     *v = v.powf(-1.0);
                 }
-            },
+            }
             Rate::Control => {
                 self.buf[0] = self.buf[0].powf(-1.0);
-            },
+            }
         }
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }

@@ -4,7 +4,7 @@ pub mod parser;
 pub use self::parser::Parser;
 
 // NB: No Eq due to embedded f32
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Ident(String),
     Integer(isize),
@@ -14,7 +14,7 @@ pub enum Token {
     EOF,
 }
 
-#[derive(Debug,PartialEq,Eq,Clone,Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum TokType {
     Ident,
     Integer,

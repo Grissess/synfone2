@@ -1,5 +1,6 @@
 [package]
 name = "synfone"
+edition = "2018"
 version = "0.1.0"
 authors = ["Graham Northup <grissess@nexusg.org>"]
 

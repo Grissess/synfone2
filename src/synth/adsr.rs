@@ -1,6 +1,9 @@
-use super::*;
+use super::{
+    mem, FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, Parameters, Rate,
+    SampleBuffer,
+};
 
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
     Delay,
     Attack,
@@ -44,7 +47,7 @@ impl Generator for DAHDSR {
                 self.attack_cd = delay;
                 self.cur = 0.0;
             }
-        } else{
+        } else {
             self.phase = Phase::Release;
         }
 
@@ -55,7 +58,7 @@ impl Generator for DAHDSR {
                     if self.attack_cd <= 0.0 {
                         self.phase = Phase::Attack;
                     }
-                },
+                }
                 Phase::Attack => {
                     self.cur += attack;
                     if self.cur >= 1.0 {
@@ -63,36 +66,38 @@ impl Generator for DAHDSR {
                         self.phase = Phase::Hold;
                         self.decay_cd = hold;
                     }
-                },
+                }
                 Phase::Hold => {
                     self.decay_cd -= 1.0;
                     if self.decay_cd <= 0.0 {
                         self.phase = Phase::Decay;
                     }
-                },
+                }
                 Phase::Decay => {
                     self.cur -= decay;
                     if self.cur <= sustain {
                         self.cur = sustain;
                         self.phase = Phase::Sustain;
                     }
-                },
+                }
                 Phase::Sustain => {
                     self.cur = sustain;
-                },
+                }
                 Phase::Release => {
                     self.cur -= release;
                     if self.cur < 0.0 {
                         self.cur = 0.0;
                     }
-                },
+                }
             }
             *samp = self.cur;
         }
 
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }

@@ -1,4 +1,7 @@
-use super::*;
+use super::{
+    mem, FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, Parameters, Rate,
+    SampleBuffer,
+};
 
 #[derive(Debug)]
 pub struct ControlRate {
@@ -9,7 +12,10 @@ pub struct ControlRate {
 impl ControlRate {
     pub fn new(mut gen: GenBox) -> ControlRate {
         gen.set_buffer(SampleBuffer::new(1));
-        ControlRate { value: gen, buf: SampleBuffer::new(1) }
+        ControlRate {
+            value: gen,
+            buf: SampleBuffer::new(1),
+        }
     }
 }
 
@@ -19,15 +25,21 @@ impl Generator for ControlRate {
         self.buf.update_from(self.value.eval(params));
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
-    fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer { mem::replace(&mut self.buf, buf) }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
+    fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
+        mem::replace(&mut self.buf, buf)
+    }
 }
 
 pub struct ControlRateFactory;
 
 impl GeneratorFactory for ControlRateFactory {
     fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        Ok(Box::new(ControlRate::new(params.remove_param("gen", 0)?.into_gen()?)))
+        Ok(Box::new(ControlRate::new(
+            params.remove_param("gen", 0)?.into_gen()?,
+        )))
     }
 }
 
@@ -43,7 +55,9 @@ impl Generator for SampleRate {
         self.buf.set(params.env.sample_rate);
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -52,8 +66,10 @@ impl Generator for SampleRate {
 pub struct SampleRateFactory;
 
 impl GeneratorFactory for SampleRateFactory {
-    fn new(&self, params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
-        Ok(Box::new(SampleRate { buf: SampleBuffer::new(1) }))
+    fn new(&self, _params: &mut FactoryParameters) -> Result<GenBox, GenFactoryError> {
+        Ok(Box::new(SampleRate {
+            buf: SampleBuffer::new(1),
+        }))
     }
 }
 

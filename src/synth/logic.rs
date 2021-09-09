@@ -1,5 +1,8 @@
-use std::{mem, cmp};
-use super::*;
+use super::{
+    FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, Parameters, Rate,
+    SampleBuffer,
+};
+use std::{cmp, mem};
 
 #[derive(Debug)]
 pub struct IfElse {
@@ -14,11 +17,10 @@ impl Generator for IfElse {
         let cond_buf = self.cond.eval(params);
         let iftrue_buf = self.iftrue.eval(params);
         let iffalse_buf = self.iffalse.eval(params);
-        
-        if
-            cond_buf.rate == Rate::Control &&
-            iftrue_buf.rate == Rate::Control &&
-            iffalse_buf.rate == Rate::Control
+
+        if cond_buf.rate == Rate::Control
+            && iftrue_buf.rate == Rate::Control
+            && iffalse_buf.rate == Rate::Control
         {
             self.buf.set(if cond_buf.first() >= 0.5 {
                 iftrue_buf.first()
@@ -31,9 +33,15 @@ impl Generator for IfElse {
         self.buf.rate = Rate::Sample;
 
         let mut bound = self.buf.len();
-        if cond_buf.rate == Rate::Sample { bound = cmp::min(bound, cond_buf.len()); }
-        if iftrue_buf.rate == Rate::Sample { bound = cmp::min(bound, iftrue_buf.len()); }
-        if iffalse_buf.rate == Rate::Sample { bound = cmp::min(bound, iffalse_buf.len()); }
+        if cond_buf.rate == Rate::Sample {
+            bound = cmp::min(bound, cond_buf.len());
+        }
+        if iftrue_buf.rate == Rate::Sample {
+            bound = cmp::min(bound, iftrue_buf.len());
+        }
+        if iffalse_buf.rate == Rate::Sample {
+            bound = cmp::min(bound, iffalse_buf.len());
+        }
 
         for i in 0..bound {
             let tv = match iftrue_buf.rate {
@@ -48,16 +56,14 @@ impl Generator for IfElse {
                 Rate::Sample => cond_buf[i],
                 Rate::Control => cond_buf.first(),
             };
-            self.buf[i] = if cv >= 0.5 {
-                tv
-            } else {
-                fv
-            };
+            self.buf[i] = if cv >= 0.5 { tv } else { fv };
         }
 
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }
@@ -70,8 +76,16 @@ impl GeneratorFactory for IfElseFactory {
         let cond = params.remove_param("cond", 0)?.into_gen()?;
         let iftrue = params.remove_param("iftrue", 1)?.into_gen()?;
         let iffalse = params.remove_param("iffalse", 2)?.into_gen()?;
-        let buf = SampleBuffer::new(cmp::max(cmp::max(cond.buffer().len(), iftrue.buffer().len()), iffalse.buffer().len()));
-        Ok(Box::new(IfElse { cond: cond, iftrue: iftrue, iffalse: iffalse, buf: buf }))
+        let buf = SampleBuffer::new(cmp::max(
+            cmp::max(cond.buffer().len(), iftrue.buffer().len()),
+            iffalse.buffer().len(),
+        ));
+        Ok(Box::new(IfElse {
+            cond: cond,
+            iftrue: iftrue,
+            iffalse: iffalse,
+            buf: buf,
+        }))
     }
 }
 

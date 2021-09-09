@@ -1,5 +1,8 @@
+use super::{
+    FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, ParamKind, ParamValue,
+    Parameters, Rate, SampleBuffer,
+};
 use std::{cmp, mem};
-use super::*;
 
 #[derive(Debug)]
 pub enum RelOp {
@@ -97,28 +100,32 @@ impl Generator for Rel {
                         0.0
                     };
                 }
-            },
+            }
             Rate::Control => {
                 let val = left_buf.first();
                 let thres = right_buf.first();
-                self.buf.set(if match self.op {
-                    RelOp::Greater => val > thres,
-                    RelOp::GreaterEqual => val >= thres,
-                    RelOp::Equal => val == thres,
-                    RelOp::NotEqual => val != thres,
-                    RelOp::LessEqual => val <= thres,
-                    RelOp::Less => val < thres,
-                } {
-                    1.0
-                } else {
-                    0.0
-                });
-            },
+                self.buf.set(
+                    if match self.op {
+                        RelOp::Greater => val > thres,
+                        RelOp::GreaterEqual => val >= thres,
+                        RelOp::Equal => val == thres,
+                        RelOp::NotEqual => val != thres,
+                        RelOp::LessEqual => val <= thres,
+                        RelOp::Less => val < thres,
+                    } {
+                        1.0
+                    } else {
+                        0.0
+                    },
+                );
+            }
         }
 
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }

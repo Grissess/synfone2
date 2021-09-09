@@ -7,12 +7,12 @@ extern crate xml;
 pub mod types;
 pub use types::*;
 
-pub mod synth;
-pub mod proto;
-pub mod lang;
 pub mod client;
+pub mod lang;
 pub mod monitor;
 pub mod seq;
+pub mod proto;
+pub mod synth;
 
 #[cfg(feature = "graphics")]
 pub mod graphics;
@@ -20,6 +20,5 @@ pub mod graphics;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-    }
+    fn it_works() {}
 }

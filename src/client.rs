@@ -1,8 +1,8 @@
-use std::net::{UdpSocket, SocketAddr};
-use std::{io, mem, iter};
+use std::io;
+use std::net::{SocketAddr, UdpSocket};
 
-use synth::*;
-use proto::*;
+use crate::proto::Command;
+use crate::synth::{Environment, GenBox, Parameters, SampleBuffer};
 
 pub struct Voice {
     pub gen: GenBox,
@@ -15,7 +15,7 @@ pub struct Client {
     pub env: Environment,
     pub frames: usize,
     pub buf: SampleBuffer,
-    norm: SampleBuffer
+    norm: SampleBuffer,
 }
 
 macro_rules! dprintln {
@@ -25,7 +25,16 @@ macro_rules! dprintln {
 impl Client {
     pub fn new(socket: UdpSocket, gens: Vec<GenBox>, env: Environment) -> io::Result<Client> {
         let buf = SampleBuffer::new(env.default_buffer_size);
-        let voices = gens.into_iter().map(|g| Voice { gen: g, params: Parameters { env: env.clone(), ..Default::default() } }).collect();
+        let voices = gens
+            .into_iter()
+            .map(|g| Voice {
+                gen: g,
+                params: Parameters {
+                    env: env.clone(),
+                    ..Default::default()
+                },
+            })
+            .collect();
         Ok(Client {
             socket: socket,
             voices: voices,
@@ -74,33 +83,54 @@ impl Client {
     pub fn handle_command(&mut self, cmd: Command, sender: SocketAddr) -> bool {
         dprintln!("Packet {:?} from {:?}", cmd, sender);
         match cmd {
-            Command::KeepAlive => {},
-            Command::Ping{..} => {
+            Command::KeepAlive => {}
+            Command::Ping { .. } => {
                 let mut reply_buffer: [u8; Command::SIZE] = [0u8; Command::SIZE];
                 cmd.write_into(&mut reply_buffer);
                 self.socket.send_to(&reply_buffer, sender);
-            },
+            }
             Command::Quit => {
                 return false;
-            },
-            Command::Play{voice, freq, amp, ..} => {
+            }
+            Command::Play {
+                voice, freq, amp, ..
+            } => {
                 if (voice as usize) >= self.voices.len() {
-                    dprintln!("Dropping packet: tried to send to voice {} >= number of voices {}", voice, self.voices.len());
+                    dprintln!(
+                        "Dropping packet: tried to send to voice {} >= number of voices {}",
+                        voice,
+                        self.voices.len()
+                    );
                     return true;
                 }
                 let dur = cmd.duration().unwrap();
                 let frac_secs = (dur.as_secs() as f32) + (dur.subsec_nanos() as f32) / 1.0e9;
                 let frames = frac_secs * (self.env.sample_rate as f32);
 
-                dprintln!("Playing on voice {} freq {} amp {} from frame {} until frame {}", voice, freq, amp, self.frames, (self.frames as f32) + frames);
+                dprintln!(
+                    "Playing on voice {} freq {} amp {} from frame {} until frame {}",
+                    voice,
+                    freq,
+                    amp,
+                    self.frames,
+                    (self.frames as f32) + frames
+                );
 
-                let mut vars = &mut self.voices[voice as usize].params.vars;
-                *vars.entry("v_start".to_string()).or_insert_with(Default::default) = (self.frames as f32);
-                *vars.entry("v_deadline".to_string()).or_insert_with(Default::default) = (self.frames as f32) + frames;
-                *vars.entry("v_freq".to_string()).or_insert_with(Default::default) = freq as f32;
-                *vars.entry("v_amp".to_string()).or_insert_with(Default::default) = amp;
-            },
-            Command::Caps{..} => {
+                let vars = &mut self.voices[voice as usize].params.vars;
+                *vars
+                    .entry("v_start".to_string())
+                    .or_insert_with(Default::default) = self.frames as f32;
+                *vars
+                    .entry("v_deadline".to_string())
+                    .or_insert_with(Default::default) = self.frames as f32 + frames;
+                *vars
+                    .entry("v_freq".to_string())
+                    .or_insert_with(Default::default) = freq as f32;
+                *vars
+                    .entry("v_amp".to_string())
+                    .or_insert_with(Default::default) = amp;
+            }
+            Command::Caps { .. } => {
                 let reply = Command::Caps {
                     voices: self.voices.len() as u32,
                     tp: ['S' as u8, 'Y' as u8, 'N' as u8, 'F' as u8],
@@ -123,7 +153,7 @@ impl Client {
             },
             Command::Unknown{data} => {
                 dprintln!("Dropping packet: unknown data {:?}", (&data as &[u8]));
-            },
+            }
         }
 
         true
@@ -133,7 +163,11 @@ impl Client {
         let len = self.voices.len();
 
         for voice in self.voices.iter_mut() {
-            *voice.params.vars.entry("v_frame".to_string()).or_insert_with(Default::default) = self.frames as f32;
+            *voice
+                .params
+                .vars
+                .entry("v_frame".to_string())
+                .or_insert_with(Default::default) = self.frames as f32;
         }
 
         let (first, next) = self.voices.split_at_mut(1);
@@ -155,7 +189,9 @@ impl Client {
     pub fn write_frames_bytes(&self, out_buffer: &mut Vec<u8>) {
         let current = out_buffer.len();
         out_buffer.reserve_exact(self.buf.size() - current);
-        unsafe { out_buffer.set_len(self.buf.size()); }
+        unsafe {
+            out_buffer.set_len(self.buf.size());
+        }
         self.buf.write_bytes(out_buffer);
     }
 }

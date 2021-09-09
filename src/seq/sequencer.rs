@@ -1,4 +1,4 @@
-use super::*;
+use super::{NoteStream, Note, IV};
 
 pub fn coalesce<'a, I: Iterator<Item=&'a NoteStream>>(stream_iter: I) -> NoteStream {
     let mut output = NoteStream::new();

@@ -10,7 +10,6 @@ use std::cmp::Eq;
 use std::str::FromStr;
 use std::fmt::Display;
 use failure::Error;
-use super::*;
 
 struct AttrMapping(HashMap<String, String>);
 
