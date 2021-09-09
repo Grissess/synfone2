@@ -28,7 +28,16 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
-    let env = Environment::default();
+    let host = cpal::default_host();
+    let device = host.default_output_device().expect("no default host audio device!");
+    let mut conf_range = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
+    let conf = conf_range.next().expect("audio device has no supported configs!").with_max_sample_rate().config();
+
+    println!("playing at sample rate {}", conf.sample_rate.0);
+    let env = Environment {
+        sample_rate: conf.sample_rate.0 as f32,
+        default_buffer_size: 64,
+    };
 
     let mut genfile = File::open(
         args.iter()
@@ -64,10 +73,6 @@ fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
         .expect("Failed to init shared buffer")
         .append(&mut iter::repeat(0.0f32).take(last_buffer_lim).collect());
 
-    let host = cpal::default_host();
-    let device = host.default_output_device().expect("no default host audio device!");
-    let mut conf_range = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
-    let conf = conf_range.next().expect("audio device has no supported configs!").with_max_sample_rate().config();
     let stream;
     {
       let client = client.clone();
@@ -94,9 +99,15 @@ fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
                   ring.append(&mut cli.buffer().iter().map(|&x| x).collect());
               }
               let mut drain = ring.drain(..frames);
+              let mut min = 1.0;
+              let mut max = 0.0;
               for i in 0..frames {
-                data[i] = drain.next().unwrap();
+                let frame = drain.next().unwrap();
+                min = f32::min(min, frame);
+                max = f32::max(min, frame);
+                data[i] = frame;
               }
+              println!("played {} frames, min {}, max {}", frames, min, max);
           },
           move |err| {
             println!("audio stream error: {}", err);
