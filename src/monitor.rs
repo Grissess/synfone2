@@ -1,6 +1,6 @@
 use super::*;
-use synth::SampleBuffer;
 use std::collections::HashMap;
+use synth::SampleBuffer;
 
 pub struct VoiceDatum {
     pitch: Pitch,
@@ -35,4 +35,4 @@ pub trait Monitor {
     fn process(&mut self, data: &Data);
 }
 
-pub type MonBox = Box<Monitor>;
+pub type MonBox = Box<dyn Monitor>;

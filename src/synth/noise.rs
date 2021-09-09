@@ -1,7 +1,10 @@
+use super::{
+    FactoryParameters, GenBox, GenFactoryError, Generator, GeneratorFactory, Parameters, Rate,
+    SampleBuffer,
+};
 use std::mem;
-use super::*;
 
-use ::rand::{XorShiftRng, Rng, SeedableRng};
+use ::rand::{Rng, SeedableRng, XorShiftRng};
 
 #[derive(Debug)]
 pub struct Noise {
@@ -19,7 +22,9 @@ impl Generator for Noise {
 
         &self.buf
     }
-    fn buffer(&self) -> &SampleBuffer { &self.buf }
+    fn buffer(&self) -> &SampleBuffer {
+        &self.buf
+    }
     fn set_buffer(&mut self, buf: SampleBuffer) -> SampleBuffer {
         mem::replace(&mut self.buf, buf)
     }

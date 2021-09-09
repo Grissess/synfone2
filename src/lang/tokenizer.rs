@@ -1,8 +1,8 @@
+use super::Token;
 use std::collections::HashMap;
 use std::error::Error;
-use std::{fmt, io, fs};
 use std::io::Read;
-use super::*;
+use std::{fmt, fs, io};
 use unicode_xid::UnicodeXID;
 
 pub struct Lexemes {
@@ -15,7 +15,7 @@ pub struct Lexemes {
     com_outer: char,
     com_inner: char,
     include_delim: char,
-    escapes: HashMap<char, char>
+    escapes: HashMap<char, char>,
 }
 
 impl Default for Lexemes {
@@ -65,8 +65,8 @@ pub enum NumericKind {
 #[derive(Debug)]
 pub enum ErrorKind {
     UnexpectedEOF(Location),
-    BadEscapeValue(EscapeKind, String, Option<Box<Error>>),
-    BadNumericLiteral(NumericKind, String, Option<Box<Error>>),
+    BadEscapeValue(EscapeKind, String, Option<Box<dyn Error>>),
+    BadNumericLiteral(NumericKind, String, Option<Box<dyn Error>>),
     UnknownChar(char),
     IncludeError(io::Error),
     TooManyRecursions(usize),
@@ -86,19 +86,32 @@ impl ErrorType {
         };
 
         ret.desc = match ret.kind {
-            ErrorKind::UnexpectedEOF(ref loc) => format!("Unexpected EOF {}", match *loc {
-                Location::InString => "in string constant",
-                Location::InStringEscape => "in string escape",
-                Location::InInclude => "in include",
-            }),
-            ErrorKind::BadEscapeValue(ref kind, ref val, ref err) => format!("Bad {} escape {}: {:?}", match *kind {
-                EscapeKind::Hexadecimal => "hexadecimal",
-                EscapeKind::Octal => "octal",
-            }, val, err),
-            ErrorKind::BadNumericLiteral(ref kind, ref val, ref err) => format!("Bad {} literal {}: {:?}", match *kind {
-                NumericKind::Integer => "integer",
-                NumericKind::Float => "floating point",
-            }, val, err),
+            ErrorKind::UnexpectedEOF(ref loc) => format!(
+                "Unexpected EOF {}",
+                match *loc {
+                    Location::InString => "in string constant",
+                    Location::InStringEscape => "in string escape",
+                    Location::InInclude => "in include",
+                }
+            ),
+            ErrorKind::BadEscapeValue(ref kind, ref val, ref err) => format!(
+                "Bad {} escape {}: {:?}",
+                match *kind {
+                    EscapeKind::Hexadecimal => "hexadecimal",
+                    EscapeKind::Octal => "octal",
+                },
+                val,
+                err
+            ),
+            ErrorKind::BadNumericLiteral(ref kind, ref val, ref err) => format!(
+                "Bad {} literal {}: {:?}",
+                match *kind {
+                    NumericKind::Integer => "integer",
+                    NumericKind::Float => "floating point",
+                },
+                val,
+                err
+            ),
             ErrorKind::UnknownChar(c) => format!("Unknown character {}", c),
             ErrorKind::IncludeError(ref e) => format!("Error including file: {:?}", e),
             ErrorKind::TooManyRecursions(n) => format!("Include recursed too many times ({})", n),
@@ -115,14 +128,21 @@ impl ErrorType {
     }
 }
 
+impl From<io::Error> for ErrorType {
+    fn from(e: io::Error) -> Self {
+        Self::new(ErrorKind::IncludeError(e))
+    }
+}
+
 impl Error for ErrorType {
     fn description(&self) -> &str {
         &self.desc
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         match self.kind {
-            ErrorKind::BadNumericLiteral(_, _, ref err) | ErrorKind::BadEscapeValue(_, _, ref err) => match *err {
+            ErrorKind::BadNumericLiteral(_, _, ref err)
+            | ErrorKind::BadEscapeValue(_, _, ref err) => match *err {
                 Some(ref err) => Some(&**err),
                 None => None,
             },
@@ -133,7 +153,7 @@ impl Error for ErrorType {
 
 impl fmt::Display for ErrorType {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.description())
+        write!(f, "{}", self.to_string())
     }
 }
 
@@ -150,10 +170,7 @@ pub struct ResumableChars {
 
 impl ResumableChars {
     pub fn new(s: String) -> ResumableChars {
-        ResumableChars {
-            string: s,
-            pos: 0,
-        }
+        ResumableChars { string: s, pos: 0 }
     }
 }
 
@@ -166,27 +183,27 @@ impl Iterator for ResumableChars {
         } else {
             let mut iter = self.string[self.pos..].char_indices();
             match iter.next() {
-                Some((pos, ch)) => {
+                Some((_pos, ch)) => {
                     self.pos += match iter.next() {
                         Some((pos, _)) => pos,
                         None => self.string.len(),
                     };
                     Some(ch)
-                },
+                }
                 None => None,
             }
         }
     }
 }
 
-pub struct Tokenizer<T: Iterator<Item=char>> {
+pub struct Tokenizer<T: Iterator<Item = char>> {
     reader: T,
     reader_stack: Vec<ResumableChars>,
     pushback: Option<char>,
     lexemes: Lexemes,
 }
 
-impl<T: Iterator<Item=char>> Tokenizer<T> {
+impl<T: Iterator<Item = char>> Tokenizer<T> {
     const MAX_INCLUDE_RECURSIONS: usize = 256;
 
     pub fn new(reader: T) -> Tokenizer<T> {
@@ -203,14 +220,16 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
             None => {
                 self.pushback = Some(c);
                 true
-            },
+            }
             Some(_) => false,
         }
     }
 
     pub fn push_reader(&mut self, rc: ResumableChars) -> Result<(), ErrorType> {
         if self.reader_stack.len() > Self::MAX_INCLUDE_RECURSIONS {
-            Err(ErrorType::new(ErrorKind::TooManyRecursions(self.reader_stack.len())))
+            Err(ErrorType::new(ErrorKind::TooManyRecursions(
+                self.reader_stack.len(),
+            )))
         } else {
             self.reader_stack.push(rc);
             Ok(())
@@ -222,11 +241,10 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
             Some(c) => {
                 self.pushback = None;
                 Some(c)
-            },
+            }
             None => {
                 let mut ret = None;
                 let mut produced_idx: usize = 0;
-                let len = self.reader_stack.len();
 
                 for (idx, rc) in self.reader_stack.iter_mut().enumerate().rev() {
                     match rc.next() {
@@ -234,8 +252,8 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                             ret = Some(c);
                             produced_idx = idx;
                             break;
-                        },
-                        None => {},
+                        }
+                        None => {}
                     }
                 }
 
@@ -243,10 +261,10 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                     Some(c) => {
                         self.reader_stack.truncate(produced_idx + 1);
                         Some(c)
-                    },
+                    }
                     None => self.reader.next(),
                 }
-            },
+            }
         }
     }
 
@@ -298,7 +316,9 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
             loop {
                 let nc = self.next_char();
                 if nc == None {
-                    return Err(ErrorType::new(ErrorKind::UnexpectedEOF(Location::InInclude)));
+                    return Err(ErrorType::new(ErrorKind::UnexpectedEOF(
+                        Location::InInclude,
+                    )));
                 }
                 let ncc = nc.unwrap();
 
@@ -314,9 +334,9 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                 Ok(f) => f,
             };
             let mut contents = String::new();
-            f.read_to_string(&mut contents);
+            f.read_to_string(&mut contents)?;
             self.push_reader(ResumableChars::new(contents))?;
-            return self.next_token()
+            return self.next_token();
         }
 
         /* Strings */
@@ -332,7 +352,9 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                 if ncc == self.lexemes.esc_intro {
                     let ec = self.next_char();
                     if ec == None {
-                        return Err(ErrorType::new(ErrorKind::UnexpectedEOF(Location::InStringEscape)));
+                        return Err(ErrorType::new(ErrorKind::UnexpectedEOF(
+                            Location::InStringEscape,
+                        )));
                     }
                     let ecc = ec.unwrap();
 
@@ -341,7 +363,9 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                         loop {
                             let sc = self.next_char();
                             if None == sc {
-                                return Err(ErrorType::new(ErrorKind::UnexpectedEOF(Location::InStringEscape)));
+                                return Err(ErrorType::new(ErrorKind::UnexpectedEOF(
+                                    Location::InStringEscape,
+                                )));
                             }
                             let scc = sc.unwrap();
 
@@ -354,12 +378,22 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                         }
                         let rc = u32::from_str_radix(&value, 16);
                         if let Err(err) = rc {
-                            return Err(ErrorType::new(ErrorKind::BadEscapeValue(EscapeKind::Hexadecimal, value, Some(Box::new(err)))));
+                            return Err(ErrorType::new(ErrorKind::BadEscapeValue(
+                                EscapeKind::Hexadecimal,
+                                value,
+                                Some(Box::new(err)),
+                            )));
                         }
                         let rc = ::std::char::from_u32(rc.unwrap());
                         match rc {
                             Some(rcc) => buffer.push(rcc),
-                            None => return Err(ErrorType::new(ErrorKind::BadEscapeValue(EscapeKind::Hexadecimal, value, None))),
+                            None => {
+                                return Err(ErrorType::new(ErrorKind::BadEscapeValue(
+                                    EscapeKind::Hexadecimal,
+                                    value,
+                                    None,
+                                )))
+                            }
                         }
                         continue;
                     }
@@ -369,7 +403,9 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                         loop {
                             let sc = self.next_char();
                             if None == sc {
-                                return Err(ErrorType::new(ErrorKind::UnexpectedEOF(Location::InStringEscape)));
+                                return Err(ErrorType::new(ErrorKind::UnexpectedEOF(
+                                    Location::InStringEscape,
+                                )));
                             }
                             let scc = sc.unwrap();
 
@@ -382,12 +418,22 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
                         }
                         let rc = u32::from_str_radix(&value, 8);
                         if let Err(err) = rc {
-                            return Err(ErrorType::new(ErrorKind::BadEscapeValue(EscapeKind::Octal, value, Some(Box::new(err)))));
+                            return Err(ErrorType::new(ErrorKind::BadEscapeValue(
+                                EscapeKind::Octal,
+                                value,
+                                Some(Box::new(err)),
+                            )));
                         }
                         let rc = ::std::char::from_u32(rc.unwrap());
                         match rc {
                             Some(rcc) => buffer.push(rcc),
-                            None => return Err(ErrorType::new(ErrorKind::BadEscapeValue(EscapeKind::Octal, value, None))),
+                            None => {
+                                return Err(ErrorType::new(ErrorKind::BadEscapeValue(
+                                    EscapeKind::Octal,
+                                    value,
+                                    None,
+                                )))
+                            }
                         }
                         continue;
                     }
@@ -459,12 +505,20 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
             return if floating {
                 match buffer.parse::<f32>() {
                     Ok(v) => Ok(Token::Float(v)),
-                    Err(err) => Err(ErrorType::new(ErrorKind::BadNumericLiteral(NumericKind::Float, buffer, Some(Box::new(err))))),
+                    Err(err) => Err(ErrorType::new(ErrorKind::BadNumericLiteral(
+                        NumericKind::Float,
+                        buffer,
+                        Some(Box::new(err)),
+                    ))),
                 }
             } else {
                 match buffer.parse::<isize>() {
                     Ok(v) => Ok(Token::Integer(v)),
-                    Err(err) => Err(ErrorType::new(ErrorKind::BadNumericLiteral(NumericKind::Integer, buffer, Some(Box::new(err))))),
+                    Err(err) => Err(ErrorType::new(ErrorKind::BadNumericLiteral(
+                        NumericKind::Integer,
+                        buffer,
+                        Some(Box::new(err)),
+                    ))),
                 }
             };
         }
@@ -497,7 +551,7 @@ impl<T: Iterator<Item=char>> Tokenizer<T> {
     }
 }
 
-impl<T: Iterator<Item=char>> Iterator for Tokenizer<T> {
+impl<T: Iterator<Item = char>> Iterator for Tokenizer<T> {
     type Item = Token;
 
     fn next(&mut self) -> Option<Token> {
