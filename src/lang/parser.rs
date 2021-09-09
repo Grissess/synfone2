@@ -14,7 +14,9 @@ macro_rules! dprintln {
 */
 
 macro_rules! dprintln {
-    ( $( $x:expr ),* ) => { () }
+    ( $( $x:expr ),* ) => {
+        ()
+    };
 }
 
 #[derive(Debug)]
@@ -428,7 +430,11 @@ impl<T: Iterator<Item = char>> Parser<T> {
             ctr = new_ctr;
 
             dprintln!("before factory_params comma, tok is {:?}", self.cur_token());
-            if self.expect_op(',').map_err(|_e| dprintln!("factory_params consume comma failed: {:?}", e)).is_err() {
+            if self
+                .expect_op(',')
+                .map_err(|_e| dprintln!("factory_params consume comma failed: {:?}", e))
+                .is_err()
+            {
                 dprintln!("factory_params is concluding");
                 self.expect_op(')')?;
                 break;
@@ -459,7 +465,10 @@ impl<T: Iterator<Item = char>> Parser<T> {
             }
         };
 
-        dprintln!("about to consume param value, token is {:?}", self.cur_token());
+        dprintln!(
+            "about to consume param value, token is {:?}",
+            self.cur_token()
+        );
 
         match self.cur_token().clone() {
             // FIXME: Does this really need to be cloned?

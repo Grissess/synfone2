@@ -139,19 +139,32 @@ impl Client {
                 let mut reply_buffer: [u8; Command::SIZE] = [0u8; Command::SIZE];
                 reply.write_into(&mut reply_buffer);
                 self.socket.send_to(&reply_buffer, sender);
-            },
-            Command::PCM{..} => { /* TODO */ },
-            Command::PCMSyn{..} => { /* TODO */},
-            Command::ArtParam{voice, index, value} => {
-                dprintln!("Articulation parameter voice {:?} index {} value {}", voice, index, value);
+            }
+            Command::PCM { .. } => { /* TODO */ }
+            Command::PCMSyn { .. } => { /* TODO */ }
+            Command::ArtParam {
+                voice,
+                index,
+                value,
+            } => {
+                dprintln!(
+                    "Articulation parameter voice {:?} index {} value {}",
+                    voice,
+                    index,
+                    value
+                );
                 for vidx in match voice {
-                    Some(vidx) => ((vidx as usize)..((vidx+1) as usize)),
+                    Some(vidx) => ((vidx as usize)..((vidx + 1) as usize)),
                     None => (0..self.voices.len()),
                 } {
-                    *self.voices[vidx].params.vars.entry(format!("artp{}", index)).or_insert_with(Default::default) = value;
+                    *self.voices[vidx]
+                        .params
+                        .vars
+                        .entry(format!("artp{}", index))
+                        .or_insert_with(Default::default) = value;
                 }
-            },
-            Command::Unknown{data} => {
+            }
+            Command::Unknown { data } => {
                 dprintln!("Dropping packet: unknown data {:?}", (&data as &[u8]));
             }
         }

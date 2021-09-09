@@ -2,7 +2,8 @@ extern crate byteorder;
 extern crate rand;
 extern crate unicode_xid;
 extern crate xml;
-#[macro_use] extern crate failure;
+#[macro_use]
+extern crate failure;
 
 pub mod types;
 pub use types::*;
@@ -10,8 +11,8 @@ pub use types::*;
 pub mod client;
 pub mod lang;
 pub mod monitor;
-pub mod seq;
 pub mod proto;
+pub mod seq;
 pub mod synth;
 
 #[cfg(feature = "graphics")]
