@@ -5,8 +5,8 @@ use std::net::*;
 use std::sync::*;
 use std::{env, ffi, iter, thread};
 
-extern crate portaudio;
-use portaudio as pa;
+use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
+
 use synfone::client::*;
 use synfone::lang::*;
 use synfone::proto::*;
@@ -64,46 +64,49 @@ fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
         .expect("Failed to init shared buffer")
         .append(&mut iter::repeat(0.0f32).take(last_buffer_lim).collect());
 
-    let pa_inst = pa::PortAudio::new().expect("Failed to create PortAudio interface");
-    let settings = pa_inst
-        .default_output_stream_settings(1, env.sample_rate as f64, env.default_buffer_size as u32)
-        .expect("Failed to instantiate stream settings");
-    let mut stream;
+    let host = cpal::default_host();
+    let device = host.default_output_device().expect("no default host audio device!");
+    let mut conf_range = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
+    let conf = conf_range.next().expect("audio device has no supported configs!").with_max_sample_rate().config();
+    let stream;
     {
-        let client = client.clone();
-        let last_buffer = last_buffer.clone();
-        let mut ring: VecDeque<Sample> = VecDeque::new();
-        ring.reserve_exact(2 * env.default_buffer_size);
-        stream = pa_inst
-            .open_non_blocking_stream(
-                settings,
-                move |pa::OutputStreamCallbackArgs { buffer, frames, .. }| {
-                    while frames > ring.len() {
-                        let mut cli = client.lock().unwrap();
-                        cli.next_frames();
-                        {
-                            let mut buf = last_buffer
-                                .lock()
-                                .expect("Failed to acquire shared buffer in audio callback");
-                            buf.append(&mut cli.buffer().samples.iter().map(|&x| x).collect());
-                            let len = buf.len();
-                            if len > last_buffer_lim {
-                                buf.drain(..(len - last_buffer_lim));
-                            }
-                        }
-                        ring.append(&mut cli.buffer().iter().map(|&x| x).collect());
-                    }
-                    let samps = ring.drain(..frames).collect::<Vec<f32>>();
-                    buffer.copy_from_slice(&samps);
-                    pa::Continue
-                },
-            )
-            .expect("Failed to create stream");
+      let client = client.clone();
+      let last_buffer = last_buffer.clone();
+      let mut ring: VecDeque<Sample> = VecDeque::new();
+      ring.reserve_exact(2 * env.default_buffer_size);
+      stream = device.build_output_stream(
+          &conf,
+          move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+              let frames = data.len();
+              while frames > ring.len() {
+                  let mut cli = client.lock().unwrap();
+                  cli.next_frames();
+                  {
+                      let mut buf = last_buffer
+                          .lock()
+                          .expect("Failed to acquire shared buffer in audio callback");
+                      buf.append(&mut cli.buffer().samples.iter().map(|&x| x).collect());
+                      let len = buf.len();
+                      if len > last_buffer_lim {
+                          buf.drain(..(len - last_buffer_lim));
+                      }
+                  }
+                  ring.append(&mut cli.buffer().iter().map(|&x| x).collect());
+              }
+              let mut drain = ring.drain(..frames);
+              for i in 0..frames {
+                data[i] = drain.next().unwrap();
+              }
+          },
+          move |err| {
+            println!("audio stream error: {}", err);
+          }
+      ).expect("could not create audio stream!");
     }
 
     eprintln!("Starting.");
 
-    stream.start().expect("Failed to start stream");
+    stream.play().expect("Failed to start stream");
 
     eprintln!("Audio stream started.");
 
