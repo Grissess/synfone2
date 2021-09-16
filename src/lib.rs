@@ -1,9 +1,8 @@
 extern crate byteorder;
 extern crate rand;
 extern crate unicode_xid;
-extern crate xml;
-#[macro_use]
-extern crate failure;
+extern crate quick_xml;
+extern crate midly;
 
 pub mod types;
 pub use types::*;

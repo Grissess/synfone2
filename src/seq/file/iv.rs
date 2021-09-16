@@ -1,111 +1,173 @@
 use std::io;
-use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::str::{from_utf8, Utf8Error};
 use std::borrow::Borrow;
 
-use xml::reader;
-use xml::reader::{EventReader, XmlEvent};
-use xml::attribute::OwnedAttribute;
-use std::hash::Hash;
-use std::cmp::Eq;
-use std::str::FromStr;
-use std::fmt::Display;
-use failure::Error;
+use crate::seq::{IV, Version, VersionDecodeError, IVMeta, BPMTable};
 
-struct AttrMapping(HashMap<String, String>);
+use quick_xml::events::{Event, BytesStart};
 
-impl AttrMapping {
-    pub fn make(attrs: Vec<OwnedAttribute>) -> AttrMapping {
-        let mut output = HashMap::new();
 
-        for attr in attrs {
-            output.insert(attr.name.local_name.clone(), attr.value.clone());
-        }
+struct State<'s, B: io::BufRead> {
+    iv: &'s mut IV,
+    rdr: &'s mut quick_xml::Reader<B>,
+}
 
-        AttrMapping(output)
-    }
+#[derive(Debug)]
+pub enum Error {
+    QXML(quick_xml::Error),
+    VersionDecodeError,
+    UTF8(Utf8Error),
+    Unexpected { scope: Scope, event: String },
+}
 
-    pub fn get_str<'a, 'b, 'c: 'a, Q: Hash+Eq+Display+?Sized>(&'a self, key: &'b Q, default: &'c str) -> &'a str where String: Borrow<Q> {
-        self.0.get(key).map(|x| &**x).unwrap_or(default)
-    }
+#[derive(Debug, Clone, Copy, Hash)]
+pub enum Scope {
+    TopLevel,
+}
 
-    pub fn req<V: FromStr, Q: Hash+Eq+Display+?Sized>(&self, key: &Q) -> Result<V, Error> where String: Borrow<Q>, V::Err: failure::Fail {
-        match self.0.get(key){ 
-            Some(x) => Ok(x.parse()?),
-            None => bail!("{} not found in attrs", key)
-        }
-    }
-
-    pub fn req_midi_pitch<Q: Hash+Eq+Display+?Sized>(&self, key: &Q) -> Result<Pitch, Error> where String: Borrow<Q> {
-        Ok(Pitch::MIDI(self.req::<f32, Q>(key)?))
+impl From<quick_xml::Error> for Error {
+    fn from(t: quick_xml::Error) -> Self {
+        Error::QXML(t)
     }
 }
 
-fn parse_note(ev: XmlEvent, into: &mut Vec<Note>) -> Result<bool, Error> {
-    match ev {
-        XmlEvent::StartElement{name, attributes, ..} => {
-            if name.local_name.as_ref() != "note" { bail!("malformed iv: non-note attr in note stream"); }
-            let attrs = AttrMapping::make(attributes);
-            into.push(Note {
-                time: attrs.req("time")?,
-                ampl: attrs.req("ampl")?,
-                dur: attrs.req("dur")?,
-                pitch: attrs.req_midi_pitch("pitch")?,
-                start_tick: None,
-                dur_ticks: None
-            });
-            Ok(false)
-        },
-        _ => Ok(true)
+impl From<VersionDecodeError> for Error {
+    fn from(v: VersionDecodeError) -> Self {
+        Error::VersionDecodeError
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(e: Utf8Error) -> Self {
+        Error::UTF8(e)
     }
 }
 
 pub fn read<R: io::Read>(source: R) -> Result<IV, Error> {
     let mut output: IV = Default::default();
-    let mut event_reader = EventReader::new(source);
+    let mut reader = quick_xml::Reader::from_reader(
+        io::BufReader::new(source)
+    );
+    let mut state = State {
+        iv: &mut output,
+        rdr: &mut reader,
+    };
+    
+    read_toplevel(&mut state)?;
 
-    #[derive(Debug)]
-    enum ReadState<'a> {
-        Idle,
-        InStreams,
-        InBPMs,
-        InNoteStream(&'a mut NoteStream),
-        InAuxStream(&'a mut AuxStream),
-    }
+    Ok(output)
+}
 
-    let mut state = ReadState::Idle;
-
+const IV_NAME: &[u8] = b"iv";
+const IV_VERSION: &[u8] = b"version";
+const IV_SOURCE: &[u8] = b"src";
+fn read_toplevel<'s, B: io::BufRead>(state: &mut State<'s, B>) -> Result<(), Error> {
+    let mut buffer: Vec<u8> = Vec::new();
     loop {
-        match event_reader.next()? {
-            XmlEvent::StartElement{name, attributes, ..} => {
-                let attrmap = AttrMapping::make(attributes);
+        match state.rdr.read_event(&mut buffer)? {
+            Event::Decl(_) => (),  // Don't care
+            Event::Start(bs) => {
+                match_iv(state, bs, false);
+                break;
+            },
+            Event::Empty(bs) => {
+                match_iv(state, bs, true);
+                break;
+            },
+            ev => return Err(Error::Unexpected {
+                scope: Scope::TopLevel,
+                event: format!("{:?}", ev),
+            }),
+        }
+    }
+    Ok(())
+}
 
-                match name.local_name.as_ref() {
-                    "bpms" => { }
-                    "streams" => {
-                        match attrmap.get_str("type", "") {
-                            "ns" => {
-                                let mut notes = Vec::new();
-
-                                loop {
-                                    if !parse_note(event_reader.next()?, &mut notes)? { break; }
-                                }
-
-                            },
-                            _ => unimplemented!()
-                        }
-                    },
-                    _ => unimplemented!()
-                }
-            }
-            XmlEvent::EndElement{name} => match (name.local_name.as_ref(), &state) {
-                ("bpms", _) => { state = ReadState::Idle; },
-                ("streams", _) => { state = ReadState::Idle; },
-                _ => (),
+fn match_iv<'s, 'a, B: io::BufRead>(state: &mut State<'s, B>, bs: BytesStart<'a>, empty: bool) -> Result<(), Error> {
+    if bs.name() != IV_NAME {
+        return Err(Error::Unexpected {
+            scope: Scope::TopLevel,
+            event: format!("start tag: {:?}", bs.name()),
+        });
+    }
+    for attr in bs.attributes() {
+        let attr = attr?;
+        match attr.key {
+            key if key == IV_VERSION => {
+                let value = attr.unescaped_value()?;
+                state.iv.version =
+                    Version::try_from(value.borrow())?;
+            },
+            key if key == IV_SOURCE => {
+                state.iv.source =
+                    Some(from_utf8(
+                            attr.unescaped_value()?.borrow()
+                    )?.into());
             },
             _ => (),
         }
     }
-        
+    if !empty { read_iv(state)?; }
+    Ok(())
+}
 
-    Ok(output)
+const META_NAME: &[u8] = b"meta";
+const STREAMS_NAME: &[u8] = b"streams";
+fn read_iv<'s, B: io::BufRead>(state: &mut State<'s, B>) -> Result<(), Error> {
+    let mut buffer: Vec<u8> = Vec::new();
+    loop {
+        match state.rdr.read_event(&mut buffer)? {
+            Event::Start(bs) => {
+                match_in_iv(state, bs, false);
+            },
+            Event::Empty(bs) => {
+                match_in_iv(state, bs, true);
+            },
+            Event::End(be) => {
+                if be.name() == IV_NAME {
+                    break;
+                }
+            },
+            _ => (),
+        }
+    }
+    Ok(())
+}
+
+fn read_until<'s, B: io::BufRead>(state: &mut State<'s, B>, name: &[u8]) -> Result<(), Error> {
+    let mut buffer: Vec<u8> = Vec::new();
+    loop {
+        match state.rdr.read_event(&mut buffer)? {
+            Event::End(be) => {
+                if be.name() == name {
+                    return Ok(());
+                }
+            }
+            _ => (),
+        }
+    }
+}
+
+fn match_in_iv<'s, 'a, B: io::BufRead>(state: &mut State<'s, B>, bs: BytesStart<'a>, empty: bool) -> Result<(), Error> {
+    match bs.name() {
+        nm if nm == META_NAME => {
+            if !empty { read_meta(state)?; }
+        },
+        nm if nm == STREAMS_NAME => {
+            if !empty { read_streams(state)?; }
+        },
+        nm => {
+            if !empty { read_until(state, nm.borrow())?; }
+        }
+    }
+    Ok(())
+}
+
+fn read_meta<'s, B: io::BufRead>(state: &mut State<'s, B>) -> Result<(), Error> {
+    todo!()
+}
+
+fn read_streams<'s, B: io::BufRead>(state: &mut State<'s, B>) -> Result<(), Error> {
+    todo!()
 }

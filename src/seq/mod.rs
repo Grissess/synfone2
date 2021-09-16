@@ -4,6 +4,7 @@ pub mod file;
 
 use std::collections::HashMap;
 use std::{cmp, ops};
+use std::convert::TryFrom;
 
 use super::Pitch;
 
@@ -250,11 +251,42 @@ pub struct IVMeta {
     pub app: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Version {
+    Ver1_0,
+    Ver1_1,
+}
+
+impl Default for Version {
+    fn default() -> Self {
+        Version::Ver1_1
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct VersionDecodeError;
+
+const VER1_0: &[u8] = b"1.0";
+const VER1_1: &[u8] = b"1.1";
+impl<'a> TryFrom<&'a [u8]> for Version {
+    type Error = VersionDecodeError;
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        use Version::*;
+        match value {
+            v if v == VER1_0 => Ok(Ver1_0),
+            v if v == VER1_1 => Ok(Ver1_1),
+            _ => Err(VersionDecodeError),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct IV {
     pub default_group: Group,
     pub groups: HashMap<String, Group>,
     pub meta: IVMeta,
+    pub source: Option<String>,
+    pub version: Version,
 }
 
 impl IV {

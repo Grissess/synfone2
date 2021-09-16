@@ -29,11 +29,14 @@ fn main() -> Result<(), std::io::Error> {
 }
 
 fn main_client(args: Vec<ffi::OsString>) -> Result<(), std::io::Error> {
+    /*
     let host = if let Ok(host) = cpal::host_from_id(cpal::HostId::Jack) {
         host
     } else {
         cpal::default_host()
     };
+    */
+    let host = cpal::default_host();
     let device = host.default_output_device().expect("no default host audio device!");
     let mut conf_ranges = device.supported_output_configs().expect("could not query audio device capabilities -- audio device disconnected?");
     let conf_range = conf_ranges.next().expect("audio device has no configurations!");
